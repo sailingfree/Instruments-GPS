@@ -1,0 +1,29 @@
+
+Magneto 1.2
+Input .csv file? mag3_raw.csv
+
+Average magnitude of 541 vectors (default Hm) = 15148.27366
+
+Expected norm of local field vector Hm? (0 for default above) 1000
+
+Combined bias vector B:
+ 9955.15 -7948.26  8511.80
+
+Correction matrix Ainv, using Hm=1000.000000:
+  0.25060   0.02942  -0.02955
+  0.02942   0.31692   0.00789
+ -0.02955   0.00789   0.30592
+
+Where Hcalc = Ainv*(H-B)
+
+Code initialization statements...
+
+ float B { 9955.15,-7948.26, 8511.80};
+
+ float Ainv {{  0.25060,  0.02942, -0.02955},
+             {  0.02942,  0.31692,  0.00789},
+             { -0.02955,  0.00789,  0.30592}};
+
+RMS corrected vector length 999.999999
+
+RMS residual  0.000000

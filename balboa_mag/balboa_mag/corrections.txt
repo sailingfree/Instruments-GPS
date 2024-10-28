@@ -1,0 +1,17 @@
+Combined bias vector B:
+  -86.47  -151.97   -13.18
+
+Correction matrix Ainv, using Hm=1000.000000:
+  2.01731   0.03164   0.16148
+  0.03164   2.03701  -0.07833
+  0.16148  -0.07833   2.26656
+
+Where Hcalc = Ainv*(H-B)
+
+Code initialization statements...
+
+ float B {  -86.47, -151.97,  -13.18};
+
+ float Ainv {{  2.01731,  0.03164,  0.16148},
+             {  0.03164,  2.03701, -0.07833},
+             {  0.16148, -0.07833,  2.26656}};

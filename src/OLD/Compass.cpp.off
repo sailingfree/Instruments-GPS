@@ -1,0 +1,115 @@
+/*
+
+MinIMU-9-Arduino-AHRS
+Pololu MinIMU-9 + Arduino AHRS (Attitude and Heading Reference System)
+
+Copyright (c) 2011 Pololu Corporation.
+http://www.pololu.com/
+
+MinIMU-9-Arduino-AHRS is based on sf9domahrs by Doug Weibel and Jose Julio:
+http://code.google.com/p/sf9domahrs/
+
+sf9domahrs is based on ArduIMU v1.5 by Jordi Munoz and William Premerlani, Jose
+Julio and Doug Weibel:
+http://code.google.com/p/ardu-imu/
+
+MinIMU-9-Arduino-AHRS is free software: you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version.
+
+MinIMU-9-Arduino-AHRS is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
+more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
+
+*/
+
+#include <Arduino.h>
+#include <math.h>
+//#include <defines.h>
+
+#define M_X_MIN -474 //-1000
+#define M_Y_MIN -704 //-1000
+#define M_Z_MIN -509 //-1000
+#define M_X_MAX +659 //+1000
+#define M_Y_MAX +441 //+1000
+#define M_Z_MAX +463 //+1000
+int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,-1,1}; //Correct directions x,y,z - gyro, accelerometer, magnetometer
+//int SENSOR_SIGN[9] = {1,-1,-1,-1,1,1,1,-1,-1}; //Correct directions x,y,z - gyro, accelerometer, magnetometer
+
+//int minx, miny, minz, maxx, maxy, maxz = 0;
+
+#define ToDeg(x) ((x)*57.2957795131)  // *180/pi
+
+
+void Compass_Heading(int16_t magnetom_x, int16_t magnetom_y, int16_t magnetom_z)
+{
+
+  float MAG_X;
+  float MAG_Y;
+  float cos_roll;
+  float sin_roll;
+  float cos_pitch;
+  float sin_pitch;
+  
+  //cos_roll = cos(roll);
+  //sin_roll = sin(roll);
+  //cos_pitch = cos(pitch);
+  //sin_pitch = sin(pitch);
+  
+  const int xoffset = (M_X_MAX + M_X_MIN) / 2;
+  const int yoffset = (M_Y_MAX + M_Y_MIN) / 2;
+  const int zoffset = (M_Z_MAX + M_Z_MIN) / 2;
+  
+  int x1, y1, z1;
+  
+  x1 = map(magnetom_x, M_X_MIN, M_X_MAX, -1024, 1024);
+  y1 = map(magnetom_y, M_Y_MIN, M_Y_MAX, -1024, 1024);
+  z1 = map(magnetom_z, M_Z_MIN, M_Y_MAX, -1024, 1024);
+  
+  // adjust for LSM303 compass axis offsets/sensitivity differences by scaling to +/-0.5 range
+  float c_magnetom_x = (float)(magnetom_x - SENSOR_SIGN[6]*M_X_MIN) / (M_X_MAX - M_X_MIN) - SENSOR_SIGN[6]*0.5;
+  float c_magnetom_y = (float)(magnetom_y - SENSOR_SIGN[7]*M_Y_MIN) / (M_Y_MAX - M_Y_MIN) - SENSOR_SIGN[7]*0.5;
+  float c_magnetom_z = (float)(magnetom_z - SENSOR_SIGN[8]*M_Z_MIN) / (M_Z_MAX - M_Z_MIN) - SENSOR_SIGN[8]*0.5;
+  
+  // Tilt compensated Magnetic filed X:
+  MAG_X = c_magnetom_x*cos_pitch+c_magnetom_y*sin_roll*sin_pitch+c_magnetom_z*cos_roll*sin_pitch;
+  // Tilt compensated Magnetic filed Y:
+  MAG_Y = c_magnetom_y*cos_roll-c_magnetom_z*sin_roll;
+  // Magnetic Heading
+  //MAG_Heading = atan2(-MAG_Y,MAG_X);
+
+  float MAG_Heading = atan2((float) -c_magnetom_y, c_magnetom_x);
+
+Serial.printf(">mx:%d\n>my:%d\n>mz:%d\n", magnetom_x, magnetom_y, magnetom_z);
+Serial.printf(">cmx:%f\n>cmy:%f\n>cmz:%f\n", c_magnetom_x, c_magnetom_y, c_magnetom_z);
+//Serial.printf("%f %f %f\n", c_magnetom_x, c_magnetom_y, c_magnetom_z);
+Serial.printf(">M:%f\n", ToDeg(MAG_Heading) + 180);
+
+// Prints the raw mag data for calibration and plotting
+Serial.printf("%d %d %d\n", magnetom_x, magnetom_y, magnetom_z);
+//Serial.printf(">x:%d\n>y:%d\n>z:%d\n", x1, y1, z1);
+
+
+//Serial.print(rawData[0],DECPOINTS);Serial.print("\t");
+//  Serial.print(rawData[1],DECPOINTS);Serial.print("\t");
+//  Serial.print(rawData[2],DECPOINTS);Serial.print("\t");
+//  Serial.print(corrData[0],DECPOINTS);Serial.print("\t");
+//  Serial.print(corrData[1],DECPOINTS);Serial.print("\t");
+//  Serial.print(corrData[2],DECPOINTS);Serial.println("");
+//Serial.printf("xbias %d ybias %d zbia %d\n", xoffset, yoffset, zoffset);
+#if 0
+  if(magnetom_x > maxx) {maxx=magnetom_x; Serial.printf("maxx %d\n", maxx); }
+  if(magnetom_x < minx) {minx=magnetom_x;Serial.printf("minx %d\n", minx); }
+
+  if(magnetom_y > maxy) {maxy=magnetom_y;Serial.printf("maxy %d\n", maxy); }
+  if(magnetom_y < miny) {miny=magnetom_y;Serial.printf("miny %d\n", miny); }
+
+  if(magnetom_z > maxz) {maxz=magnetom_z;Serial.printf("maxz %d\n", maxz); }
+  if(magnetom_z < minz) {minz=magnetom_z;Serial.printf("minz %d\n", minz); }
+#endif  
+}

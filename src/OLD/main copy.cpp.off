@@ -1,0 +1,444 @@
+#include <TinyGPSPlus.h>
+#include <SoftwareSerial.h>
+#include <TFT_eSPI.h>
+#include <StringStream.h>
+#include <display.h>
+#include <cyd_pins.h>
+#include <cyd_i2c.h>
+#include <bmp180_cyd.h>
+#include <10dof.h>
+#include <ArduinoJson.h>
+#include <ArduinoOTA.h>
+#include <DNSServer.h>
+#include <WebServer.h>
+#include <WiFi.h>
+#include "ESPmDNS.h"
+#include <list>
+#include <map>
+#include <GwPrefs.h>
+#include <GwShell.h>
+#include <html_footer.h>
+#include <html_header.h>
+#include <imu.h>
+#include <ekfNavINS.h>
+//#include <uNavINS.h>
+
+SET_LOOP_TASK_STACK_SIZE(16 * 1024);
+
+
+// Global objects and variables
+String host_name;
+String Model = "Naiad N2K WiFi ";
+
+// Map for the wifi access points
+typedef struct {
+    String ssid;
+    String pass;
+} WiFiCreds;
+
+static const uint16_t MaxAP = 2;
+WiFiCreds wifiCreds[MaxAP];
+
+// Wifi cofiguration Client and Access Point
+String AP_password;  // AP password  read from preferences
+String AP_ssid;      // SSID for the AP constructed from the hostname
+
+// Put IP address details here
+const IPAddress AP_local_ip(192, 168, 15, 1);  // Static address for AP
+const IPAddress AP_gateway(192, 168, 15, 1);
+const IPAddress AP_subnet(255, 255, 255, 0);
+
+int wifiType = 0;  // 0= Client 1= AP
+const size_t MaxClients = 10;
+const uint16_t ServerPort = 2222;  // Define the TCP port.
+// This is where server sends NMea0183 data.
+// Define the console to output to serial at startup.
+// this can get changed later, eg in the gwshell.
+Stream* Console = &Serial;
+
+// Define the network servers
+// The web server on port 80
+WebServer webserver(80);
+
+// TCP server for serving up NMEA0183
+WiFiServer server(ServerPort, MaxClients);
+
+// A JSON server to provide JSON formatted output
+WiFiServer json(90);
+
+// The telnet server for the shell.
+WiFiServer telnet(23);
+
+// A list of connected TCP clients for the TCP NMEA0183 port
+template <class T>
+using LinkedList = std::list<T>;
+using tWiFiClientPtr = std::shared_ptr<WiFiClient>;
+LinkedList<tWiFiClientPtr> clients;
+
+IPAddress UnitIP;  // The address of this device. Could be client or AP
+
+String WifiMode = "Unknown";
+String WifiSSID = "Unknown";
+String WifiIP = "Unknown";
+
+ekfNavINS ekf;
+
+//uNavINS Filter;
+
+/*
+   This sample code demonstrates the normal use of a TinyGPSPlus (TinyGPSPlus) object.
+   It requires the use of SoftwareSerial, and assumes that you have a
+   9600-baud serial GPS device connected to the GPIOS defined below.
+*/
+static const int RXPin = SERIAL_RX, TXPin = SERIAL_TX;
+
+static const uint32_t GPSBaud = 9600;
+
+#define WLAN_CLIENT 0  // Set to 1 to enable client network. 0 to act as AP only
+#define USE_ARDUINO_OTA true
+#define USE_MDNS true
+
+// The TinyGPSPlus object
+TinyGPSPlus gps;
+
+// The serial connection to the GPS device
+SoftwareSerial ss(RXPin, TXPin);
+
+// The string stream object for building text
+StringStream output;
+
+bool docalibrate = false;
+
+// This custom version of delay() ensures that the gps object
+// is being "fed".
+static void smartDelay(unsigned long ms) {
+    return;
+    unsigned long start = millis();
+    do {
+        while (ss.available())
+            gps.encode(ss.read());
+    } while (millis() - start < ms);
+}
+
+static void printFloat(float val, bool valid, int len, int prec, bool addToOutput = false, bool doprint = true) {
+    StringStream local;
+
+    if (!valid) {
+        while (len-- > 1)
+            local.print('*');
+        local.print(' ');
+    }
+    else {
+        local.print(val, prec);
+        int vi = abs((int)val);
+        int flen = prec + (val < 0.0 ? 2 : 1);  // . and -
+        flen += vi >= 1000 ? 4 : vi >= 100 ? 3
+            : vi >= 10 ? 2
+            : 1;
+        for (int i = flen; i < len; ++i)
+            local.print(' ');
+    }
+    if (doprint) {
+        Serial.print(local.data);
+    }
+    if (addToOutput) {
+        output.data += local.data;
+    }
+
+    smartDelay(0);
+}
+
+static void printInt(unsigned long val, bool valid, int len, bool addToOutput = false, bool doprint = true) {
+    StringStream local;
+
+    char sz[32] = "*****************";
+    if (valid)
+        sprintf(sz, "%ld", val);
+    sz[len] = 0;
+    for (int i = strlen(sz); i < len; ++i)
+        sz[i] = ' ';
+    if (len > 0)
+        sz[len - 1] = ' ';
+    local.print(sz);
+    if (doprint) {
+        Serial.print(local.data);
+    }
+    if (addToOutput) {
+        output.data += local.data;
+    }
+    smartDelay(0);
+}
+
+static void printDateTime(TinyGPSDate& d, TinyGPSTime& t, bool addToOutput = false, bool doprint = true) {
+    StringStream local;
+
+    if (!d.isValid()) {
+        local.print(F("********** "));
+    }
+    else {
+        char sz[32];
+        sprintf(sz, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
+        local.print(sz);
+    }
+
+    if (!t.isValid()) {
+        local.print(F("******** "));
+    }
+    else {
+        char sz[32];
+        sprintf(sz, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
+        local.print(sz);
+    }
+
+    if (doprint) {
+        Serial.print(local.data);
+    }
+    if (addToOutput) {
+        output.data += local.data;
+    }
+    printInt(d.age(), d.isValid(), 5, false, doprint);
+    smartDelay(0);
+}
+
+static void printStr(const char* str, int len, bool addToOutput = false, bool doprint = true) {
+    StringStream local;
+
+    int slen = strlen(str);
+    for (int i = 0; i < len; ++i)
+        local.print(i < slen ? str[i] : ' ');
+
+    if (doprint) {
+        Serial.print(local.data);
+    }
+    if (addToOutput) {
+        output.data += local.data;
+    }
+    smartDelay(0);
+}
+
+// Initialize the Arduino OTA
+void initializeOTA() {
+    // TODO: option to authentication (password)
+    Console->println("OTA Started");
+
+    // ArduinoOTA
+    ArduinoOTA.onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH)
+            type = "sketch";
+        else  // U_SPIFFS
+            type = "filesystem";
+        Console->println("Start updating " + type);
+        })
+        .onEnd([]() {
+        Console->println("\nEnd");
+            })
+        .onProgress([](unsigned int progress, unsigned int total) {
+        Console->printf("Progress: %u%%\r", (progress / (total / 100)));
+            })
+        .onError([](ota_error_t error) {
+        Console->printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR)
+            Console->println("Auth Failed");
+        else if (error == OTA_BEGIN_ERROR)
+            Console->println("Begin Failed");
+        else if (error == OTA_CONNECT_ERROR)
+            Console->println("Connect Failed");
+        else if (error == OTA_RECEIVE_ERROR)
+            Console->println("Receive Failed");
+        else if (error == OTA_END_ERROR)
+            Console->println("End Failed");
+            });
+
+    // Begin
+    ArduinoOTA.begin();
+}
+// HTML handlers
+String html_start = HTML_start;  // Read HTML contents
+String html_end = HTML_end;
+void handleRoot() {
+    webserver.send(200, "text/html", html_start + html_end);  // Send web page
+}
+
+void handleData() {
+    String adcValue(random(100));
+    webserver.send(200, "application/json", adcValue);  // Send ADC value only to client ajax request
+}
+
+void handleBoat() {
+    StringStream boatData;
+    boatData.printf("<pre>");
+    boatData.printf("<h1>Boat Data</h1>");
+    boatData.printf("<div class='info'>");
+    // displayBoat(boatData);
+    boatData.printf("</div>");
+
+    boatData.printf("<h1>NMEA2000 Devices</h1>");
+    boatData.printf("<div class='info'>");
+    // ListDevices(boatData, true);
+    boatData.printf("</div>");
+
+    boatData.printf("<h1>Network</h1>");
+    boatData.printf("<div class='info'>");
+    // getNetInfo(boatData);
+    boatData.printf("</div>");
+
+    boatData.printf("<h1>System</h1>");
+    boatData.printf("<div class='info'>");
+    // getSysInfo(boatData);
+    boatData.printf("</div>");
+
+    boatData.printf("<h1>GPS</h1>");
+    boatData.printf("<div class='info'>");
+    // getGps(boatData);
+    // getSatellites(boatData);
+
+    boatData.printf("</div>");
+
+    boatData.printf("<h1>Sensors</h1>");
+    boatData.printf("<div class='info'>");
+    // getSensors(boatData);
+    boatData.printf("</div>");
+
+    boatData.printf("</pre>");
+    webserver.send(200, "text/html", html_start + boatData.data.c_str() + html_end);  // Send web page
+}
+
+void pcf8574_setup(void);
+
+// Connect to a wifi AP
+// Try all the configured APs
+bool connectWifi() {
+    int wifi_retry = 0;
+
+    Serial.printf("There are %d APs to try\n", MaxAP);
+
+    for (int i = 0; i < MaxAP; i++) {
+        Serial.printf("\nTrying %s\n", wifiCreds[i].ssid.c_str());
+        WiFi.disconnect();
+        WiFi.mode(WIFI_OFF);
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(wifiCreds[i].ssid.c_str(), wifiCreds[i].pass.c_str());
+        wifi_retry = 0;
+
+        while (WiFi.status() != WL_CONNECTED && wifi_retry < 20) {  // Check connection, try 5 seconds
+            wifi_retry++;
+            delay(500);
+            Console->print(".");
+        }
+        Console->println("");
+        if (WiFi.status() == WL_CONNECTED) {
+            WifiMode = "Client";
+            WifiSSID = wifiCreds[i].ssid;
+            WifiIP = WiFi.localIP().toString();
+            Console->printf("Connected to %s\n", wifiCreds[i].ssid.c_str());
+            return true;
+        }
+        else {
+            Console->printf("Can't connect to %s\n", wifiCreds[i].ssid.c_str());
+        }
+    }
+    return false;
+}
+
+void disconnectWifi() {
+    Console = &Serial;
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
+    WiFi.mode(WIFI_STA);
+    WifiMode = "Not connected";
+}
+
+void setup() {
+    Serial.begin(115200);
+
+    Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
+    Wire.setClock(100000);
+    Wire.begin();
+
+    // scan the bus
+    scan_i2c_bus();
+
+    // Init the display
+    setup_display();
+
+    // The bmp180 pressure sensor
+    setup_bmp180();
+
+    // The l3gd20 gyro
+    setup_10dof();
+
+    // Determin gyro bias
+    setGyroBias();
+
+    ss.begin(GPSBaud);
+}
+    static int looper = 0;
+void loop() {
+
+    double gpsLng = gps.location.lng();
+    double gpsLat = gps.location.lat();
+
+    LSM303::vector<float> g = gyroNorm();
+    LSM303::vector<float> m = compassNorm();
+    LSM303::vector<float> a = accelNorm();
+
+    int32_t gpsCourse = gps.course.value();  // Course in degress clockwise from north
+
+    double vn = 0.0; //gps.speed.mps() * cos(DEG_TO_RAD * gpsCourse);            // GPS North velocity m/s
+    double ve = 0.0; //gps.speed.mps() * sin(DEG_TO_RAD * gpsCourse);;            // GPS East velocity m,/s
+    double vd = 0.0; //0.0;                                            // Down velocity - assume none on a boat!
+    double lat = 0.0; //DEG_TO_RAD * gpsLat;  // GPS lat radians
+    double lon = 0.0; //DEG_TO_RAD * gpsLng;  // GPS lon radians
+    double alt = 0.0; //gps.altitude.meters();
+    float gyrox = g.x * -1;
+    float gyroy = g.y * -1;
+    float gyroz = g.z * -1;
+    float ax = 10 * a.x * -1;//a.x;
+    float ay = 10 * a.y * -1;//a.y;
+    float az = 10 * a.z * -1;//a.z;
+    float hx = m.x;
+    float hy = m.y;
+    float hz = m.z;
+    float roll, pitch, yaw = 0.0;
+
+
+    std::tie(pitch, roll, yaw) = ekf.getPitchRollYaw(ax, ay, az, hx, hy, hz);
+    uint64_t  now = millis();
+    //now = time(NULL);
+    //now = 0;   // Turn GPS off
+       
+    //    Filter.update(time(NULL), vn, ve, vd, lat, lon, alt, gyrox, gyroy, gyroz, ax, ay,az, hx, hy, hz);
+    ekf.ekf_update(now, vn, ve, vd,
+        lat, lon, alt,
+        gyrox, gyroy, gyroz,
+        ax, ay, az, hx, hy, hz);
+    looper ++;
+    static time_t last = 0;
+
+    if(millis() > last + 1000) {
+        last = millis();
+        
+    printf("------------------------- Time %ld -----Loop %d --------------------- \n", time(NULL), looper);
+    Serial.printf("Latitude  : %2.7f %2.7f\n", lat, ekf.getLatitude_rad() * RAD_TO_DEG);
+    Serial.printf("Longitute : %2.7f %2.7f\n", lon, ekf.getLongitude_rad() * RAD_TO_DEG);
+    Serial.printf("Altitude  : %2.3f %2.3f\n", alt, ekf.getAltitude_m());
+    Serial.printf("Speed (N) : %2.3f %2.3f\n", vn, ekf.getVelNorth_ms());
+    Serial.printf("Speed (E) : %2.3f %2.3f\n", ve, ekf.getVelEast_ms());
+    Serial.printf("Speed (D) : %2.3f %2.3f\n", vd, ekf.getVelDown_ms());
+    Serial.printf("Roll 	  : %2.3f %2.3f\n", roll, ekf.getRoll_rad() * RAD_TO_DEG);
+    Serial.printf("Pitch     : %2.3f %2.3f\n", pitch, ekf.getPitch_rad() * RAD_TO_DEG);
+    Serial.printf("Yaw       : %2.3f %2.3f\n", (yaw * RAD_TO_DEG), ekf.getHeadingConstrainAngle180_rad() * RAD_TO_DEG);
+    Serial.printf("Mag X     : %f  %f\n", hx, hx);
+    Serial.printf("Mag Y     : %f  %f\n", hy, hy);
+    Serial.printf("Mag Z     : %f  %f\n", hz, hz);
+    Serial.printf("Gyro X    : %f  %f\n", gyrox * DEG_TO_RAD, ekf.getGyroBiasX_rads());
+    Serial.printf("Gyro Y    : %f  %f\n", gyroy * DEG_TO_RAD, ekf.getGyroBiasY_rads());
+    Serial.printf("Gyro Z    : %f  %f\n", gyroz * DEG_TO_RAD, ekf.getGyroBiasZ_rads());
+    Serial.printf("Accel X   : %f  %f\n", ax, ekf.getAccelBiasX_mss());
+    Serial.printf("Accel Y   : %f  %f\n", ay, ekf.getAccelBiasY_mss());
+    Serial.printf("Accel Z   : %f  %f\n", az, ekf.getAccelBiasZ_mss());
+    Serial.printf("-----------------------------------------------------------------\n");
+    looper = 0;
+    }
+}

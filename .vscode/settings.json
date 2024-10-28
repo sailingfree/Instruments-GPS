@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "cmath": "cpp",
+        "*.tpp": "cpp"
+    },
+    "cmake.configureOnOpen": false
+}

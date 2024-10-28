@@ -1,0 +1,38 @@
+// use the SensorFusion library
+
+#include <fusion.h>
+
+SF fusion;
+
+float pitch, roll, yaw;
+float deltat;
+
+void fusion_setup() {
+    Serial.begin(115200);  // serial to display data
+    // your IMU begin code goes here
+}
+
+void fusion_work(double gx, double gy, double gz,
+                 double ax, double ay, double az,
+                 double mx, double my, double mz) {
+    // now you should read the gyroscope, accelerometer (and magnetometer if you have it also)
+    // NOTE: the gyroscope data have to be in radians
+    // if you have them in degree convert them with: DEG_TO_RAD example: gx * DEG_TO_RAD
+
+    deltat = fusion.deltatUpdate();  // this have to be done before calling the fusion update
+    // choose only one of these two:
+    // fusion.MahonyUpdate(gx, gy, gz, ax, ay, az, deltat);  //mahony is suggested if there isn't the mag and the mcu is slow
+    fusion.MadgwickUpdate(gx, gy, gz, ax, ay, az, mx, my, mz, deltat);  // else use the magwick, it is slower but more accurate
+
+    pitch = fusion.getPitch();
+    roll = fusion.getRoll();  // you could also use getRollRadians() ecc
+    yaw = fusion.getYaw();
+
+    Serial.print("Pitch:\t");
+    Serial.println(pitch);
+    Serial.print("Roll:\t");
+    Serial.println(roll);
+    Serial.print("Yaw:\t");
+    Serial.println(yaw);
+    Serial.println();
+}

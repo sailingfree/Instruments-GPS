@@ -1,0 +1,8 @@
+/*
+Message to set the navigation mode to sea and a static hold of 0.5m/s ~ 1knot
+0000  B5 62 06 24 24 00 FF FF 05 03 00 00 00 00 10 27 00 00  µb$$ÿÿ'
+0012  05 00 FA 00 FA 00 64 00 2C 01 32 3C 00 00 00 00 00 00  úúd,2<
+0024  00 00 00 00 00 00 83 82                                
+*/
+
+static char * nav5 = "B5 62 06 24 24 00 FF FF 05 03 00 00 00 00 10 27 00 00 05 00 FA 00 FA 00 64 00 2C 01 32 3C 00 00 00 00 00 00 00 00 00 00 00 00 83 82";
