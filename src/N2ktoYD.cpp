@@ -123,14 +123,14 @@ void sendYD(TinyGPSPlus& gps) {
 
 
     // And the course and speed from the GPS
-    double COG = gps.course.deg() * DEG_TO_RAD;     // Course Over Ground in radians
-    double SOG = gps.speed.mps();                   // Speed Over Ground in m/s
+    double courseOverGround = gps.course.deg() * DEG_TO_RAD;     // Course Over Ground in radians
+    double speedOverground = gps.speed.mps();                   // Speed Over Ground in m/s
     
     SetN2kCOGSOGRapid(N2kMsg,
         1,          // SID
         N2khr_true,         ///< heading true (eg. GNSS) direction 
-        COG,
-        SOG);
+        courseOverGround,
+        speedOverground);
 
     GwSendYD(N2kMsg);
 }
