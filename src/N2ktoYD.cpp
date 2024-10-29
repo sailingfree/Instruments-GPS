@@ -18,7 +18,9 @@ extern Stream* Console;
 
 // UPD broadcast for Navionics, OpenCPN, etc.
 // We listenon this port
-static const int YDudpPort = 4444;  // port 4444 is for the Yacht devices interface
+static const int YDudpPort = 4445;  // Non standrad for local devices only
+
+static u_char SID = 0xff;             // Identify this source 
 
 // Create UDP instance for sending YD messages
 WiFiUDP     YDSendUDP;
@@ -77,7 +79,6 @@ void N2kToYD_Can(const tN2kMsg& msg, char* MsgBuf) {
 // Send to Yacht device clients over udp using the cast address
 void GwSendYD(const tN2kMsg& N2kMsg) {
     IPAddress udpAddress = WiFi.broadcastIP();
-    udpAddress.fromString("192.168.1.255");
     N2kToYD_Can(N2kMsg, YD_msg);             // Create YD message from PGN
     YDSendUDP.beginPacket(udpAddress, YDudpPort);  // Send to UDP
     YDSendUDP.printf("%s\r\n", YD_msg);
@@ -102,7 +103,7 @@ void sendYD(TinyGPSPlus& gps) {
     double pdop = 0.0;
 
     SetN2kGNSS(N2kMsg,          //Reference to a N2kMsg Object
-        1,                      // SID
+        SID,                      // SID
         daysSince1970,          // UTC date in resolution of 1 day
         secondsSinceMidnight,   // UTC time in seconds
         latitude,               // Latitude in degrees
@@ -127,7 +128,7 @@ void sendYD(TinyGPSPlus& gps) {
     double speedOverground = gps.speed.mps();                   // Speed Over Ground in m/s
     
     SetN2kCOGSOGRapid(N2kMsg,
-        1,          // SID
+        SID,          // SID
         N2khr_true,         ///< heading true (eg. GNSS) direction 
         courseOverGround,
         speedOverground);
