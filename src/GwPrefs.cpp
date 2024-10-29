@@ -41,41 +41,13 @@ void GwPrefsInit() {
         Reg.push_back(SSID2);
         Reg.push_back(SSPW1);
         Reg.push_back(SSPW2);
-        Reg.push_back(GWHOST);
+        Reg.push_back(GWSSID);
         Reg.push_back(GWPASS);
-        Reg.push_back(ENGINEDIA);
-        Reg.push_back(ALTDIA);
-        Reg.push_back(ALTPOLES);
-        Reg.push_back(PRESSCAL);
-        Reg.push_back(COMPASSOFF);
-        Reg.push_back(LASTNODEADDRESS);
-        Reg.push_back(USEGPS);
-        Reg.push_back(SENDHEADING);
-
-        // IMU calibration values
-        Reg.push_back(IS_CAL);
-        Reg.push_back(MIN_A_X);
-        Reg.push_back(MIN_A_Y);
-        Reg.push_back(MIN_A_Z);
-        Reg.push_back(MAX_A_X);
-        Reg.push_back(MAX_A_Y);
-        Reg.push_back(MAX_A_Z);
-
-        Reg.push_back(MIN_M_X);
-        Reg.push_back(MIN_M_Y);
-        Reg.push_back(MIN_M_Z);
-        Reg.push_back(MAX_M_X);
-        Reg.push_back(MAX_M_Y);
-        Reg.push_back(MAX_M_Z);
-
-        Reg.push_back(MAG_BIAS);
-        
         doneInit = true;
     }
 }
 
 void GwPrint(Stream& s) {
-    //   GwPrefsInit();
     s.printf("Preferences\n");
     for (String str : Reg) {
         String val = GwGetVal(str.c_str());
@@ -85,7 +57,6 @@ void GwPrint(Stream& s) {
 
 // Check to see if the register is in the list
 bool isGwKey(String key) {
-    //    GwPrefsInit();
     bool isreg = false;
     for (String str : Reg) {
         if (key == str) {
@@ -97,14 +68,12 @@ bool isGwKey(String key) {
 
 // List the allowable registers
 void GwListRegs(Stream& s) {
-    //    GwPrefsInit();
     for (String str : Reg) {
         s.printf("\t%s\n", str.c_str());
     }
 }
 
 String GwGetVal(const char* key, String defval) {
-    // GwPrefsInit();
     shellPref.begin(prefname, false);
     String val = shellPref.getString(key);
     shellPref.end();
@@ -127,7 +96,6 @@ int16_t GwGetValInt(const char * key) {
 }
 
 String GwSetVal(const char* key, String newval) {
-    // GwPrefsInit();
     String curval;
     shellPref.begin(prefname, false);
     shellPref.putString(key, newval);
