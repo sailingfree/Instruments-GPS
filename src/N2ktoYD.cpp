@@ -14,7 +14,7 @@
 
 #define MAX_NMEA2000_MESSAGE_SEASMART_SIZE 500
 
-extern Stream * Console;
+extern Stream* Console;
 
 // UPD broadcast for Navionics, OpenCPN, etc.
 // We listenon this port
@@ -30,11 +30,11 @@ static char YD_msg[Max_YD_Message_Size] = "";
 /**
  * @name: N2kToYD_Can
  */
-void N2kToYD_Can(const tN2kMsg &msg, char *MsgBuf) {
+void N2kToYD_Can(const tN2kMsg& msg, char* MsgBuf) {
     time_t  DaysSince1970 = 0;
     time_t SecondsSinceMidnight = 0;
 
-     int i, len;
+    int i, len;
     uint32_t canId = 0;
     char time_str[20];
     char Byte[5];
@@ -55,7 +55,8 @@ void N2kToYD_Can(const tN2kMsg &msg, char *MsgBuf) {
     if (PF < 240) {
         canId = (canId | ((msg.Destination & 0xff) << 8));
         canId = (canId | (msg.PGN << 8));
-    } else {
+    }
+    else {
         canId = (canId | (msg.PGN << 8));
     }
 
@@ -74,7 +75,7 @@ void N2kToYD_Can(const tN2kMsg &msg, char *MsgBuf) {
 }
 
 // Send to Yacht device clients over udp using the cast address
-void GwSendYD(const tN2kMsg &N2kMsg) {
+void GwSendYD(const tN2kMsg& N2kMsg) {
     IPAddress udpAddress = WiFi.broadcastIP();
     udpAddress.fromString("192.168.1.255");
     N2kToYD_Can(N2kMsg, YD_msg);             // Create YD message from PGN
@@ -87,12 +88,12 @@ void GwSendYD(const tN2kMsg &N2kMsg) {
 }
 
 // Given a tinygps object construct an n2k gps messages and send it to the YD target
-void sendYD(TinyGPSPlus & gps) {
+void sendYD(TinyGPSPlus& gps) {
     tN2kMsg N2kMsg;
 
     TinyGPSTime t = gps.time;
     uint16_t daysSince1970 = 1;
-    double secondsSinceMidnight = t.second() + (t.minute() * 60) + (t.hour() *60 *60);
+    double secondsSinceMidnight = t.second() + (t.minute() * 60) + (t.hour() * 60 * 60);
     double latitude = gps.location.lat();
     double longitude = gps.location.lng();
     double altitude = gps.altitude.meters();
@@ -117,5 +118,19 @@ void sendYD(TinyGPSPlus & gps) {
         N2kGNSSt_GPS,           // Reference station type
         0,                     // Reference Station ID 
         0);                     // Age of DGNSS Corrections
+
+    GwSendYD(N2kMsg);
+
+
+    // And the course and speed from the GPS
+    double COG = gps.course.deg() * DEG_TO_RAD;     // Course Over Ground in radians
+    double SOG = gps.speed.mps();                   // Speed Over Ground in m/s
+    
+    SetN2kCOGSOGRapid(N2kMsg,
+        1,          // SID
+        N2khr_true,         ///< heading true (eg. GNSS) direction 
+        COG,
+        SOG);
+
     GwSendYD(N2kMsg);
 }
