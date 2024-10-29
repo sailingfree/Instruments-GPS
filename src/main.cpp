@@ -329,6 +329,9 @@ void disconnectWifi() {
 
 void setup() {
     Serial.begin(115200);
+
+    GwPrefsInit();
+
     // setup the WiFI map from the preferences
     wifiCreds[0].ssid = GwGetVal(SSID1);
     wifiCreds[0].pass = GwGetVal(SSPW1);
@@ -414,6 +417,7 @@ void setup() {
 
     // Init the shell
     initGwShell();
+    setShellSource(&Serial);
 
     Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
     Wire.setClock(100000);
@@ -428,9 +432,9 @@ void setup() {
     // The bmp180 pressure sensor
     setup_bmp180();
 
-    Serial.println(F("Sats HDOP  Latitude   Longitude   Fix  Date       Time     Date Alt    Course Speed Card  Distance Course Card  Chars Sentences Checksum"));
-    Serial.println(F("           (deg)      (deg)       Age                      Age  (m)    --- from GPS ----  ---- to London  ----  RX    RX        Fail"));
-    Serial.println(F("----------------------------------------------------------------------------------------------------------------------------------------"));
+    Serial.println(F("Sats HDOP  Latitude   Longitude   Fix  Date       Time     Date Alt    Course Speed Card"));
+    Serial.println(F("           (deg)      (deg)       Age                      Age  (m)    --- from GPS ----"));
+    Serial.println(F("----------------------------------------------------------------------------------------"));
 
     config_ublox(GPSBaud);
     
@@ -438,7 +442,7 @@ void setup() {
 }
 
 void loop() {
-    bool print_gps = true;
+    bool print_gps = false;
 
     String Lat, Long, Time, Speed, Course, Dist, MaxSp, AvgSp, Hdop, Sats;
     double gpsLng;
@@ -446,6 +450,7 @@ void loop() {
 
     gpsLng = gps.location.lng();
     gpsLat = gps.location.lat();
+
 
     printInt(gps.satellites.value(), gps.satellites.isValid(), 5, true, print_gps);
     Sats = output.data;
@@ -476,6 +481,10 @@ void loop() {
     printFloat(gps.speed.kmph(), gps.speed.isValid(), 6, 2, true, print_gps);
     Speed = output.data;
     output.clear();
+    if(print_gps) {
+        Serial.println("");
+    }
+
 
     smartDelay(1000);
 
@@ -491,4 +500,5 @@ void loop() {
     // send the GPS data to the YD port
     sendYD(gps);
 
+    handleShell();
 }
