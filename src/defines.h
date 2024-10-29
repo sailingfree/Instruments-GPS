@@ -1,5 +1,4 @@
-#ifndef __DEFINES_H
-#define __DEFINES_H
+#pragma once 
 
 #include <Arduino.h>
 #include <math.h>
@@ -31,7 +30,3 @@
 #define Gyro_Scaled_X(x) ((x)*ToRad(Gyro_Gain_X)) //Return the scaled ADC raw data of the gyro in radians for second
 #define Gyro_Scaled_Y(x) ((x)*ToRad(Gyro_Gain_Y)) //Return the scaled ADC raw data of the gyro in radians for second
 #define Gyro_Scaled_Z(x) ((x)*ToRad(Gyro_Gain_Z)) //Return the scaled ADC raw data of the gyro in radians for second
-
-
-
-#endif

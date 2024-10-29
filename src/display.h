@@ -1,4 +1,5 @@
 // Display handler
+#pragma once 
 
 #include <Arduino.h>
 

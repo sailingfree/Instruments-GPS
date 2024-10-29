@@ -1,4 +1,5 @@
 //
+#pragma once 
 
 #include <BMP180I2C.h>
 

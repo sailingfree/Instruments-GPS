@@ -34,7 +34,7 @@ void getNetInfo(Stream &s) {
     tcpip_adapter_sta_list_t adapter_sta_list;
 
     s.println("=========== NETWORK ==========");
-    s.printf("HOST NAME: %s\n", host_name.c_str());
+    s.printf("HOST NAME: %s\n", hostName.c_str());
 //    s.printf("MAC: %s\n", macAddress.c_str());
     s.printf("WifiMode %s\n", WifiMode.c_str());
     s.printf("WifiIP %s\n", WifiIP.c_str());

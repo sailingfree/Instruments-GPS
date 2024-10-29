@@ -29,7 +29,7 @@ extern std::map<String, String> Gps;
 extern std::map<String, String> Sensors;
 
 extern String WifiMode, WifiIP, WifiSSID;
-extern String host_name, macAddress;
+extern String hostName, macAddress;
 
 
 void initGwShell();
