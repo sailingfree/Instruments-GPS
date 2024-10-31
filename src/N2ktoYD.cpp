@@ -103,7 +103,7 @@ void sendYD(TinyGPSPlus& gps) {
     double pdop = 0.0;
 
     SetN2kGNSS(N2kMsg,          //Reference to a N2kMsg Object
-        SID,                      // SID
+        SID,                    // SID
         daysSince1970,          // UTC date in resolution of 1 day
         secondsSinceMidnight,   // UTC time in seconds
         latitude,               // Latitude in degrees
@@ -132,6 +132,19 @@ void sendYD(TinyGPSPlus& gps) {
         N2khr_true,         ///< heading true (eg. GNSS) direction 
         courseOverGround,
         speedOverground);
+
+    GwSendYD(N2kMsg);
+
+    // Send our product information
+    SetN2kPGN126996(N2kMsg,
+        1,
+        2048,
+        "Naiad YD GPS",
+        "1.0",
+        "00001",
+        "00001",
+        0,
+        1);
 
     GwSendYD(N2kMsg);
 }
