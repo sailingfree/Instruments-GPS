@@ -72,6 +72,7 @@ using tWiFiClientPtr = std::shared_ptr<WiFiClient>;
 LinkedList<tWiFiClientPtr> clients;
 
 IPAddress UnitIP;  // The address of this device. Could be client or AP
+String SSID = "Unknown";        // The SSID of the AP connected to or ourself if an AP
 
 String WifiMode = "Unknown";
 String WifiSSID = "Unknown";
@@ -309,6 +310,7 @@ bool connectWifi() {
             WifiMode = "Client";
             WifiSSID = wifiCreds[i].ssid;
             WifiIP = WiFi.localIP().toString();
+            SSID   = wifiCreds[i].ssid;
             Console->printf("Connected to %s\n", wifiCreds[i].ssid.c_str());
             return true;
         }
@@ -489,6 +491,7 @@ void loop() {
     smartDelay(1000);
 
     String space(" ");
+    display_write(DISPWifi, SSID + space + UnitIP.toString());
     display_write(DISPDateTime, Time);
     display_write(DISPPosition, Lat + space + Long);
     display_write(DISPHDOP, String("HDOP ") + Hdop);

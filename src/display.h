@@ -6,6 +6,7 @@
 // define the objects that can be displayed
 // These are used as keys
 typedef enum {
+    DISPWifi,
     DISPDateTime,
     DISPPosition,
     DISPHDOP,
