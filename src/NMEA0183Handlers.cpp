@@ -149,9 +149,9 @@ void HandleVTG(const tNMEA0183Msg &NMEA0183Msg) {
       SetN2kCOGSOGRapid(N2kMsg,1,N2khr_true,pBD->COG,pBD->SOG);
       GwSendYD(N2kMsg);
 
-    if (NMEA0183HandlersDebugStream!=0) {
-      NMEA0183HandlersDebugStream->print("True heading="); NMEA0183HandlersDebugStream->println(pBD->TrueHeading);
-    }
+//    if (NMEA0183HandlersDebugStream!=0) {
+//      NMEA0183HandlersDebugStream->print("True heading="); NMEA0183HandlersDebugStream->println(pBD->TrueHeading);
+//    }
   } else if (NMEA0183HandlersDebugStream!=0) { NMEA0183HandlersDebugStream->println("Failed to parse VTG"); }
 }
 

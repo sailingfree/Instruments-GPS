@@ -53,7 +53,7 @@ static int list(int argc, char** argv) {
 // Show the boat data
 static int boat(int argc, char** argv) {
     StringStream s;
-//    displayBoat(s);
+    displayBoat(s);
     shell.print(s.data);
     return 0;
 }
