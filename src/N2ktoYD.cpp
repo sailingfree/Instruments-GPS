@@ -29,6 +29,26 @@ WiFiUDP     YDSendUDP;
 #define Max_YD_Message_Size 500
 static char YD_msg[Max_YD_Message_Size] = "";
 
+
+// Convert the date to days since 1970
+uint32_t dateToDaysSince1970(prog_uint32_t year, uint32_t month, uint32_t day) {
+    struct tm t;
+    time_t t_of_day;
+
+    t.tm_year = year;
+    t.tm_mon = month;           // Month, where 0 = jan
+    t.tm_mday = day;          // Day of the month
+    t.tm_hour = 0;
+    t.tm_min = 0;
+    t.tm_sec = 0;
+    t.tm_isdst = 0;        // Is DST on? 1 = yes, 0 = no, -1 = unknown
+    t_of_day = mktime(&t);
+
+    Serial.printf("seconds since the Epoch: %ld Y %d M %d D %d\n", (long) t_of_day, year, month, day);
+    Serial.printf("Days since 1970 %d\n", t_of_day / (60 * 60 * 24));
+    return t_of_day;
+}
+
 /**
  * @name: N2kToYD_Can
  */
@@ -93,6 +113,9 @@ void sendYD(TinyGPSPlus& gps) {
     tN2kMsg N2kMsg;
 
     TinyGPSTime t = gps.time;
+    TinyGPSDate gpsDate = gps.date;
+
+    Serial.printf("Date value %d\n", gpsDate.value());
     uint16_t daysSince1970 = 1;
     double secondsSinceMidnight = t.second() + (t.minute() * 60) + (t.hour() * 60 * 60);
     double latitude = gps.location.lat();
@@ -101,6 +124,8 @@ void sendYD(TinyGPSPlus& gps) {
     unsigned char nSatellites = gps.satellites.value();
     double hdop = gps.hdop.hdop();
     double pdop = 0.0;
+
+    uint16_t d = dateToDaysSince1970(gps.date.year(), gps.date.month(), gps.date.day());
 
     SetN2kGNSS(N2kMsg,          //Reference to a N2kMsg Object
         SID,                    // SID
