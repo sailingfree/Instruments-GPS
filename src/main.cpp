@@ -1,4 +1,8 @@
-#include <TinyGPSPlus.h>
+//#include <TinyGPSPlus.h>
+#include <NMEA0183.h>
+#include <NMEA0183Msg.h>
+#include <NMEA0183Handlers.h>
+#include <BoatData.h>
 #include <SoftwareSerial.h>
 #include <TFT_eSPI.h>
 #include <StringStream.h>
@@ -6,29 +10,24 @@
 #include <cyd_pins.h>
 #include <cyd_i2c.h>
 #include <bmp180_cyd.h>
-#include <ArduinoJson.h>
-#include <ArduinoOTA.h>
 #include <DNSServer.h>
-#include <WebServer.h>
 #include <WiFi.h>
 #include "ESPmDNS.h"
 #include <list>
 #include <map>
 #include <GwPrefs.h>
 #include <GwShell.h>
-#include <html_footer.h>
-#include <html_header.h>
 #include <ublox_6m_config.h>
 #include <defines.h>
 #include <N2ktoYD.h>
 
-//#include <uNavINS.h>
+extern tBoatData BoatData;
 
 SET_LOOP_TASK_STACK_SIZE(16 * 1024);
 
 // Global objects and variables
 String hostName;
-String Model = "Naiad N2K WiFi ";
+String Model = "Naiad N2K GPS ";
 
 // Map for the wifi access points
 typedef struct {
@@ -56,11 +55,6 @@ const size_t MaxClients = 10;
 Stream* Console = &Serial;
 
 // Define the network servers
-// The web server on port 80
-WebServer webServer(80);
-
-// A JSON server to provide JSON formatted output
-WiFiServer jsonServer(90);
 
 // The telnet server for the shell.
 WiFiServer telnetServer(23);
@@ -71,51 +65,38 @@ using LinkedList = std::list<T>;
 using tWiFiClientPtr = std::shared_ptr<WiFiClient>;
 LinkedList<tWiFiClientPtr> clients;
 
-IPAddress UnitIP;  // The address of this device. Could be client or AP
+IPAddress UnitIP;  // The address of this device.
 String SSID = "Unknown";        // The SSID of the AP connected to or ourself if an AP
 
 String WifiMode = "Unknown";
 String WifiSSID = "Unknown";
 String WifiIP = "Unknown";
 
-// Some ublox UBX code from here https://forum.arduino.cc/t/ubx-protocol-help-configuring-a-neo-6m-arduino-gps-module-fletcher-checksum/226600/10
-/*
-   This sample code demonstrates the normal use of a TinyGPSPlus (TinyGPSPlus) object.
-   It requires the use of SoftwareSerial, and assumes that you have a
-   9600-baud serial GPS device connected to the GPIOS defined below.
-*/
-static const int RXPin = SERIAL_RX,
-                TXPin = CYD_SCL_PIN;   // Shared with the i2c so only use one at a time
-
-static const uint32_t GPSBaud = 38400;
 
 #define WLAN_CLIENT 1  // Set to 1 to enable client network. 0 to act as AP only
-#define USE_ARDUINO_OTA true
 #define USE_MDNS true
 
 // The TinyGPSPlus object used for local GNSS data
-TinyGPSPlus gps;
+//TinyGPSPlus gps;
 
 // Custom messages PUBX
-TinyGPSCustom pubxTime(gps, "PUBX", 2);
+//TinyGPSCustom pubxTime(gps, "PUBX", 2);
 
-// The serial connection to the GPS device
-SoftwareSerial ss(RXPin, TXPin);
+
 
 // The string stream object for building text
 StringStream output;
 
+
 bool docalibrate = false;
 
-// This custom version of delay() ensures that the gps object
-// is being "fed".
-static void smartDelay(unsigned long ms) {
-    unsigned long start = millis();
-    do {
-        while (ss.available())
-            gps.encode(ss.read());
-    } while (millis() - start < ms);
-}
+
+//    unsigned long start = millis();
+//    do {
+//        while (ss.available())
+//            gps.encode(ss.read());
+//    } while (millis() - start < ms);
+//}
 
 static void printFloat(float val, bool valid, int len, int prec, bool addToOutput = false, bool doprint = true) {
     StringStream local;
@@ -141,8 +122,6 @@ static void printFloat(float val, bool valid, int len, int prec, bool addToOutpu
     if (addToOutput) {
         output.data += local.data;
     }
-
-    smartDelay(0);
 }
 
 static void printInt(unsigned long val, bool valid, int len, bool addToOutput = false, bool doprint = true) {
@@ -163,9 +142,9 @@ static void printInt(unsigned long val, bool valid, int len, bool addToOutput = 
     if (addToOutput) {
         output.data += local.data;
     }
-    smartDelay(0);
 }
 
+/*
 static void printDateTime(TinyGPSDate& d, TinyGPSTime& t, bool addToOutput = false, bool doprint = true) {
     StringStream local;
 
@@ -196,94 +175,8 @@ static void printDateTime(TinyGPSDate& d, TinyGPSTime& t, bool addToOutput = fal
     printInt(d.age(), d.isValid(), 5, false, doprint);
     smartDelay(0);
 }
+*/
 
-// Initialize the Arduino OTA
-void initializeOTA() {
-    // TODO: option to authentication (password)
-    Console->println("OTA Started");
-
-    // ArduinoOTA
-    ArduinoOTA.onStart([]() {
-        String type;
-        if (ArduinoOTA.getCommand() == U_FLASH)
-            type = "sketch";
-        else  // U_SPIFFS
-            type = "filesystem";
-        Console->println("Start updating " + type);
-        })
-        .onEnd([]() {
-        Console->println("\nEnd");
-            })
-        .onProgress([](unsigned int progress, unsigned int total) {
-        Console->printf("Progress: %u%%\r", (progress / (total / 100)));
-            })
-        .onError([](ota_error_t error) {
-        Console->printf("Error[%u]: ", error);
-        if (error == OTA_AUTH_ERROR)
-            Console->println("Auth Failed");
-        else if (error == OTA_BEGIN_ERROR)
-            Console->println("Begin Failed");
-        else if (error == OTA_CONNECT_ERROR)
-            Console->println("Connect Failed");
-        else if (error == OTA_RECEIVE_ERROR)
-            Console->println("Receive Failed");
-        else if (error == OTA_END_ERROR)
-            Console->println("End Failed");
-            });
-
-    // Begin
-    ArduinoOTA.begin();
-}
-// HTML handlers
-String html_start = HTML_start;  // Read HTML contents
-String html_end = HTML_end;
-void handleRoot() {
-    webServer.send(200, "text/html", html_start + html_end);  // Send web page
-}
-
-void handleData() {
-    String adcValue(random(100));
-    webServer.send(200, "application/json", adcValue);  // Send ADC value only to client ajax request
-}
-
-void handleBoat() {
-    StringStream boatData;
-    boatData.printf("<pre>");
-    boatData.printf("<h1>Boat Data</h1>");
-    boatData.printf("<div class='info'>");
-    // displayBoat(boatData);
-    boatData.printf("</div>");
-
-    boatData.printf("<h1>NMEA2000 Devices</h1>");
-    boatData.printf("<div class='info'>");
-    // ListDevices(boatData, true);
-    boatData.printf("</div>");
-
-    boatData.printf("<h1>Network</h1>");
-    boatData.printf("<div class='info'>");
-    // getNetInfo(boatData);
-    boatData.printf("</div>");
-
-    boatData.printf("<h1>System</h1>");
-    boatData.printf("<div class='info'>");
-    // getSysInfo(boatData);
-    boatData.printf("</div>");
-
-    boatData.printf("<h1>GPS</h1>");
-    boatData.printf("<div class='info'>");
-    // getGps(boatData);
-    // getSatellites(boatData);
-
-    boatData.printf("</div>");
-
-    boatData.printf("<h1>Sensors</h1>");
-    boatData.printf("<div class='info'>");
-    // getSensors(boatData);
-    boatData.printf("</div>");
-
-    boatData.printf("</pre>");
-    webServer.send(200, "text/html", html_start + boatData.data.c_str() + html_end);  // Send web page
-}
 
 // Connect to a wifi AP
 // Try all the configured APs
@@ -377,13 +270,7 @@ void setup() {
         UnitIP = WiFi.localIP();
     }
 
-#ifdef USE_ARDUINO_OTA
-    // Update over air (OTA)
-    initializeOTA();
-#endif
-
     // Register host name in mDNS
-#if defined USE_MDNS
 
     if (MDNS.begin(hostName.c_str())) {
         Console->print("* MDNS responder started. Hostname -> ");
@@ -391,31 +278,8 @@ void setup() {
     }
 
     // Register the services
-
-#ifdef WEB_SERVER_ENABLED
-    MDNS.addService("http", "tcp", 80);  // Web server
-#endif
-
-#ifndef DEBUG_DISABLED
-    Console->println("Adding telnet");
-    MDNS.addService("telnet", "tcp", 23);  // Telnet server of RemoteDebug, register as telnet
-#endif
-
-#endif  // MDNS
-
-    // Start JSON server
-    jsonServer.begin();
-
     // Start the telnet server
     telnetServer.begin();
-
-    // Start Web Server
-    webServer.on("/", handleRoot);
-    webServer.on("/data", handleData);
-    webServer.on("/boat", handleBoat);
-
-    webServer.begin();
-    Console->println("HTTP server started");
 
     // Init the shell
     initGwShell();
@@ -438,10 +302,9 @@ void setup() {
     Serial.println(F("           (deg)      (deg)       Age                      Age  (m)    --- from GPS ----"));
     Serial.println(F("----------------------------------------------------------------------------------------"));
 
-    config_ublox(GPSBaud);
-    
-    ss.begin(GPSBaud);
-}
+    gpsInit();
+    }
+
 
 void loop() {
     bool print_gps = false;
@@ -450,45 +313,40 @@ void loop() {
     double gpsLng;
     double gpsLat;
 
-    gpsLng = gps.location.lng();
-    gpsLat = gps.location.lat();
+    gpsLng = BoatData.Longitude;
+    gpsLat = BoatData.Latitude;
 
 
-    printInt(gps.satellites.value(), gps.satellites.isValid(), 5, true, print_gps);
-    Sats = output.data;
-    output.clear();
+//    printInt(gps.satellites.value(), gps.satellites.isValid(), 5, true, print_gps);
+//    Sats = output.data;
+//    output.clear();
+//
+//  printFloat(gps.hdop.hdop(), gps.hdop.isValid(), 6, 1, true, print_gps);
+//    Hdop = output.data;
+//    output.clear();
 
-    printFloat(gps.hdop.hdop(), gps.hdop.isValid(), 6, 1, true, print_gps);
-    Hdop = output.data;
-    output.clear();
+        printFloat(gpsLat, true, 11, 6, true, print_gps);
+        Lat = output.data;
+       output.clear();
 
-    printFloat(gpsLat, gps.location.isValid(), 11, 6, true, print_gps);
-    Lat = output.data;
-    output.clear();
-
-    printFloat(gpsLng, gps.location.isValid(), 12, 6, true, print_gps);
+    printFloat(gpsLng, true, 12, 6, true, print_gps);
     Long = output.data;
     output.clear();
 
-    printInt(gps.location.age(), gps.location.isValid(), 5, false, print_gps);
-    printDateTime(gps.date, gps.time, true, print_gps);
-    Time = output.data;
-    output.clear();
+//    printInt(gps.location.age(), gps.location.isValid(), 5, false, print_gps);
+//    printDateTime(gps.date, gps.time, true, print_gps);
+//    Time = output.data;
+//    output.clear();
 
-    printFloat(gps.altitude.meters(), gps.altitude.isValid(), 7, 2, false, print_gps);
-    printFloat(gps.course.deg(), gps.course.isValid(), 7, 2, true, print_gps);
-    Course = output.data;
-    output.clear();
+//    printFloat(gps.altitude.meters(), gps.altitude.isValid(), 7, 2, false, print_gps);
+//    printFloat(gps.course.deg(), gps.course.isValid(), 7, 2, true, print_gps);
+//    Course = output.data;
+//    output.clear();
 
-    printFloat(gps.speed.kmph(), gps.speed.isValid(), 6, 2, true, print_gps);
+    printFloat(BoatData.SOG, true, 6, 2, true, print_gps);
     Speed = output.data;
-    output.clear();
-    if(print_gps) {
-        Serial.println("");
-    }
 
-
-    smartDelay(1000);
+    handleNMEA0183();
 
     String space(" ");
     display_write(DISPWifi, SSID + space + UnitIP.toString());
@@ -501,7 +359,7 @@ void loop() {
     display_write(DISPDistance, String("Distance ") + Dist + String(" NM"));
 
     // send the GPS data to the YD port
-    sendYD(gps);
+//    sendYD(gps);
 
     handleShell();
 }

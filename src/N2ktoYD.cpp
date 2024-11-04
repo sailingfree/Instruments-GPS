@@ -5,12 +5,36 @@
 #include <Seasmart.h>
 #include <WiFi.h>
 //#include <YDtoN2kUDP.h>
+#include <NMEA0183.h>
+#include <NMEA0183Msg.h>
+#include <NMEA0183Handlers.h>
+#include <BoatData.h>
 #include <NMEA2000.h>
-#include <NMEA2000_CAN.h>
 #include <N2kMessages.h>
 #include <TinyGPSPlus.h>
+#include <ublox_6m_config.h>
+#include <cyd_pins.h>
+#include <SoftwareSerial.h>
 
 //#include <GwDefs.h>
+
+// Some ublox UBX code from here https://forum.arduino.cc/t/ubx-protocol-help-configuring-a-neo-6m-arduino-gps-module-fletcher-checksum/226600/10
+/*
+   This sample code demonstrates the normal use of a TinyGPSPlus (TinyGPSPlus) object.
+   It requires the use of SoftwareSerial, and assumes that you have a
+   9600-baud serial GPS device connected to the GPIOS defined below.
+*/
+static const int RXPin = SERIAL_RX,
+                TXPin = CYD_SCL_PIN;   // Shared with the i2c so only use one at a time
+
+static const uint32_t GPSBaud = 38400;
+
+// The NMEA0183 object
+tNMEA0183 NMEA0183_3;
+tBoatData BoatData;
+
+// The serial connection to the GPS device
+SoftwareSerial ss(RXPin, TXPin);
 
 #define MAX_NMEA2000_MESSAGE_SEASMART_SIZE 500
 
@@ -28,6 +52,25 @@ WiFiUDP     YDSendUDP;
 // The buffer to construct YD messages
 #define Max_YD_Message_Size 500
 static char YD_msg[Max_YD_Message_Size] = "";
+
+void gpsInit() {
+    
+    config_ublox(GPSBaud);
+    
+    ss.begin(GPSBaud);
+
+    // Setup NMEA0183 ports and handlers
+    InitNMEA0183Handlers(&BoatData);
+    NMEA0183_3.SetMsgHandler(HandleNMEA0183Msg);
+
+    NMEA0183_3.SetMessageStream(&ss);
+    NMEA0183_3.Open();
+
+}
+
+void handleNMEA0183() {
+    NMEA0183_3.ParseMessages();
+}
 
 
 // Convert the date to days since 1970
