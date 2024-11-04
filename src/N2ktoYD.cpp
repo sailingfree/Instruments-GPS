@@ -18,7 +18,7 @@ extern Stream* Console;
 
 // UPD broadcast for Navionics, OpenCPN, etc.
 // We listenon this port
-static const int YDudpPort = 4445;  // Non standrad for local devices only
+static const int YDudpPort = 4445;  // Non standard for local devices only
 
 static u_char SID = 0xff;             // Identify this source 
 
@@ -138,13 +138,12 @@ void sendYD(TinyGPSPlus& gps) {
     // Send our product information
     SetN2kPGN126996(N2kMsg,
         1,
-        2048,
+        16,
         "Naiad YD GPS",
         "1.0",
-        "00001",
-        "00001",
-        0,
+        "1.0.0",
+        "1.0.0",
+        1,
         1);
-
     GwSendYD(N2kMsg);
 }
