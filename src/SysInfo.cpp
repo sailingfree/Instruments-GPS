@@ -172,5 +172,12 @@ void displayBoat(Stream& s) {
     s.printf("Sats %d\n", BoatData.SatelliteCount);
     s.printf("LAT %f\n", BoatData.Latitude);
     s.printf("LON %f\n", BoatData.Longitude);
+    s.printf("RMC %d\n", BoatData.countRMC);
+    s.printf("GGA %d\n", BoatData.countGGA);
+    s.printf("HDT %d\n", BoatData.countHDT);
+    s.printf("VTG %d\n", BoatData.countVTG);
+    s.printf("GLL %d\n", BoatData.countGLL);
+    s.printf("GSA %d\n", BoatData.countGSA);
+    s.printf("GSV %d\n", BoatData.countGSV);
 
 }
