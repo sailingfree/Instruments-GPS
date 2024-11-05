@@ -76,107 +76,30 @@ String WifiIP = "Unknown";
 #define WLAN_CLIENT 1  // Set to 1 to enable client network. 0 to act as AP only
 #define USE_MDNS true
 
-// The TinyGPSPlus object used for local GNSS data
-//TinyGPSPlus gps;
-
-// Custom messages PUBX
-//TinyGPSCustom pubxTime(gps, "PUBX", 2);
-
-
-
 // The string stream object for building text
 StringStream output;
 
-
-bool docalibrate = false;
-
-
-//    unsigned long start = millis();
-//    do {
-//        while (ss.available())
-//            gps.encode(ss.read());
-//    } while (millis() - start < ms);
-//}
-
-static void printFloat(float val, bool valid, int len, int prec, bool addToOutput = false, bool doprint = true) {
-    StringStream local;
-
-    if (!valid) {
-        while (len-- > 1)
-            local.print('*');
-        local.print(' ');
+static void printFloat(float val, int len, int prec, StringStream& target) {
+    if (val == NMEA0183DoubleNA) {
+        target.print("---");
     }
     else {
-        local.print(val, prec);
+        target.print(val, prec);
         int vi = abs((int)val);
         int flen = prec + (val < 0.0 ? 2 : 1);  // . and -
         flen += vi >= 1000 ? 4 : vi >= 100 ? 3
             : vi >= 10 ? 2
             : 1;
         for (int i = flen; i < len; ++i)
-            local.print(' ');
-    }
-    if (doprint) {
-        Serial.print(local.data);
-    }
-    if (addToOutput) {
-        output.data += local.data;
+            target.print(' ');
     }
 }
 
-static void printInt(unsigned long val, bool valid, int len, bool addToOutput = false, bool doprint = true) {
+static void printInt(unsigned long val, int len, StringStream& target) {
     StringStream local;
 
-    char sz[32] = "*****************";
-    if (valid)
-        sprintf(sz, "%ld", val);
-    sz[len] = 0;
-    for (int i = strlen(sz); i < len; ++i)
-        sz[i] = ' ';
-    if (len > 0)
-        sz[len - 1] = ' ';
-    local.print(sz);
-    if (doprint) {
-        Serial.print(local.data);
-    }
-    if (addToOutput) {
-        output.data += local.data;
-    }
+    target.printf("%d", val);
 }
-
-/*
-static void printDateTime(TinyGPSDate& d, TinyGPSTime& t, bool addToOutput = false, bool doprint = true) {
-    StringStream local;
-
-    if (!d.isValid()) {
-        local.print(F("********** "));
-    }
-    else {
-        char sz[32];
-        sprintf(sz, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
-        local.print(sz);
-    }
-
-    if (!t.isValid()) {
-        local.print(F("******** "));
-    }
-    else {
-        char sz[32];
-        sprintf(sz, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
-        local.print(sz);
-    }
-
-    if (doprint) {
-        Serial.print(local.data);
-    }
-    if (addToOutput) {
-        output.data += local.data;
-    }
-    printInt(d.age(), d.isValid(), 5, false, doprint);
-    smartDelay(0);
-}
-*/
-
 
 // Connect to a wifi AP
 // Try all the configured APs
@@ -190,6 +113,7 @@ bool connectWifi() {
         WiFi.disconnect();
         WiFi.mode(WIFI_OFF);
         WiFi.mode(WIFI_STA);
+        display_write(DISPWifi, String("Trying SSID ") + wifiCreds[i].ssid);
         WiFi.begin(wifiCreds[i].ssid.c_str(), wifiCreds[i].pass.c_str());
         wifi_retry = 0;
 
@@ -203,8 +127,9 @@ bool connectWifi() {
             WifiMode = "Client";
             WifiSSID = wifiCreds[i].ssid;
             WifiIP = WiFi.localIP().toString();
-            SSID   = wifiCreds[i].ssid;
+            SSID = wifiCreds[i].ssid;
             Console->printf("Connected to %s\n", wifiCreds[i].ssid.c_str());
+            display_write(DISPWifi, String("Connect to ") + wifiCreds[i].ssid);
             return true;
         }
         else {
@@ -226,6 +151,18 @@ void setup() {
     Serial.begin(115200);
 
     GwPrefsInit();
+
+    Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
+    Wire.setClock(100000);
+    Wire.begin();
+
+    // scan the bus
+    scan_i2c_bus();
+
+    // Init the display
+    setup_display();
+
+    display_write(DISPWifi, String("Initialising WiFi"));
 
     // setup the WiFI map from the preferences
     wifiCreds[0].ssid = GwGetVal(SSID1);
@@ -285,81 +222,46 @@ void setup() {
     initGwShell();
     setShellSource(&Serial);
 
-    Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
-    Wire.setClock(100000);
-    Wire.begin();
-
-    // scan the bus
-    scan_i2c_bus();
-
-    // Init the display
-    setup_display();
 
     // The bmp180 pressure sensor
     setup_bmp180();
 
-    Serial.println(F("Sats HDOP  Latitude   Longitude   Fix  Date       Time     Date Alt    Course Speed Card"));
-    Serial.println(F("           (deg)      (deg)       Age                      Age  (m)    --- from GPS ----"));
-    Serial.println(F("----------------------------------------------------------------------------------------"));
-
     gpsInit();
-    }
+}
 
 
 void loop() {
-    bool print_gps = false;
+    StringStream Lat, Long, Time, Speed, Course, Dist, MaxSp, AvgSp, Hdop, Sats;
 
-    String Lat, Long, Time, Speed, Course, Dist, MaxSp, AvgSp, Hdop, Sats;
-    double gpsLng;
-    double gpsLat;
-
-    gpsLng = BoatData.Longitude;
-    gpsLat = BoatData.Latitude;
-
-
-//    printInt(gps.satellites.value(), gps.satellites.isValid(), 5, true, print_gps);
-//    Sats = output.data;
-//    output.clear();
-//
-//  printFloat(gps.hdop.hdop(), gps.hdop.isValid(), 6, 1, true, print_gps);
-//    Hdop = output.data;
-//    output.clear();
-
-        printFloat(gpsLat, true, 11, 6, true, print_gps);
-        Lat = output.data;
-       output.clear();
-
-    printFloat(gpsLng, true, 12, 6, true, print_gps);
-    Long = output.data;
-    output.clear();
-
-//    printInt(gps.location.age(), gps.location.isValid(), 5, false, print_gps);
-//    printDateTime(gps.date, gps.time, true, print_gps);
-//    Time = output.data;
-//    output.clear();
-
-//    printFloat(gps.altitude.meters(), gps.altitude.isValid(), 7, 2, false, print_gps);
-//    printFloat(gps.course.deg(), gps.course.isValid(), 7, 2, true, print_gps);
-//    Course = output.data;
-//    output.clear();
-
-    printFloat(BoatData.SOG, true, 6, 2, true, print_gps);
-    Speed = output.data;
-
+    // read any NMEA0183 messages, decode them and update the BoatData object
     handleNMEA0183();
 
-    String space(" ");
-    display_write(DISPWifi, SSID + space + UnitIP.toString());
-    display_write(DISPDateTime, Time);
-    display_write(DISPPosition, Lat + space + Long);
-    display_write(DISPHDOP, String("HDOP ") + Hdop);
-    display_write(DISPSats, String("Satellites ") + Sats);
-    display_write(DISPSpeed, String("Speed ") + Speed + String(" Kts"));
-    display_write(DISPCourse, String("Course ") + Course + String(" "));
-    display_write(DISPDistance, String("Distance ") + Dist + String(" NM"));
+    if (BoatData.changed) {
+        printFloat(BoatData.Latitude, 12, 6, Lat);
+        printFloat(BoatData.Longitude, 12, 6, Long);
+        printFloat(BoatData.SOG, 6, 2, Speed);
+        printFloat(BoatData.COG, 6, 1, Course);
+        printFloat(BoatData.HDOP, 6, 2, Hdop);
+        printInt(BoatData.SatelliteCount, 6, Sats);
 
-    // send the GPS data to the YD port
-//    sendYD(gps);
+        time_t gpstime = BoatData.GPSTime + (BoatData.DaysSince1970 * 24 * 60 * 60);
+
+        struct tm* tm;
+        tm = gmtime(&gpstime);
+        Time.printf("%02d:%02d:%02d %d-%d-%d\n", tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
+
+
+        String space(" ");
+        display_write(DISPWifi, SSID + space + UnitIP.toString());
+        display_write(DISPDateTime, Time.data);
+        display_write(DISPPosition, Lat.data + space + Long.data);
+        display_write(DISPHDOP, String("HDOP ") + Hdop.data);
+        display_write(DISPSats, String("Satellites ") + Sats.data);
+        display_write(DISPSpeed, String("Speed ") + Speed.data + String(" Kts"));
+        display_write(DISPCourse, String("Course ") + Course.data + String(" "));
+        BoatData.changed = false;
+    }
+
 
     handleShell();
 }
