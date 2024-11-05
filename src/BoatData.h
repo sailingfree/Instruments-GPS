@@ -2,7 +2,8 @@
 #define _BoatData_H_
 
 struct tBoatData {
-    unsigned long DaysSince1970;   // Days since 1970-01-01
+    bool changed;                   // Changed since last time we read the data
+    unsigned long DaysSince1970;    // Days since 1970-01-01
 
     double TrueHeading,
         SOG,
@@ -17,11 +18,22 @@ struct tBoatData {
         DGPSAge,
         pressure,
         temperature;
-    int GPSQualityIndicator, SatelliteCount, DGPSReferenceStationID;
+    int GPSQualityIndicator,
+        SatelliteCount,
+        DGPSReferenceStationID;
+    uint32_t countRMC,
+        countGGA,
+        countHDT,
+        countVTG,
+        countGLL,
+        countGSA,
+        countGSV;
+
     bool MOBActivated;
 
 public:
     tBoatData() {
+        changed = false;
         TrueHeading = 0;
         SOG = 0;
         COG = 0;
@@ -34,6 +46,13 @@ public:
         MOBActivated = false;
         SatelliteCount = 0;
         DGPSReferenceStationID = 0;
+        countRMC =
+            countGGA =
+            countHDT =
+            countVTG =
+            countGLL =
+            countGSA =
+            countGSV = 0;
     };
 };
 
