@@ -28,7 +28,6 @@ struct tNMEA0183Handler {
 // Predefinition for functions to make it possible for constant definition for NMEA0183Handlers
 void HandleRMC(const tNMEA0183Msg &NMEA0183Msg);
 void HandleGGA(const tNMEA0183Msg &NMEA0183Msg);
-void HandleHDT(const tNMEA0183Msg &NMEA0183Msg);
 void HandleVTG(const tNMEA0183Msg &NMEA0183Msg);
 void HandleGLL(const tNMEA0183Msg &NMEA0183Msg);
 void HandleGSA(const tNMEA0183Msg &NMEA0183Msg);
@@ -37,11 +36,10 @@ void HandleGSV(const tNMEA0183Msg &NMEA0183Msg);
 // Internal variables
 //tNMEA2000 *pNMEA2000=0;
 tBoatData *pBD=0;
-Stream* NMEA0183HandlersDebugStream=&Serial;
+Stream* NMEA0183HandlersDebugStream=NULL;
 
 tNMEA0183Handler NMEA0183Handlers[]={
   {"GGA",&HandleGGA},
-  {"HDT",&HandleHDT},
   {"VTG",&HandleVTG},
   {"RMC",&HandleRMC},
   {"GSA",&HandleGSA},
@@ -129,29 +127,6 @@ void HandleGGA(const tNMEA0183Msg &NMEA0183Msg) {
 }
 
 #define PI_2 6.283185307179586476925286766559
-
-// Heading from True North
-void HandleHDT(const tNMEA0183Msg &NMEA0183Msg) {
-  if (pBD==0) return;
-  
-  if (NMEA0183ParseHDT_nc(NMEA0183Msg,pBD->TrueHeading)) {
-
-      tN2kMsg N2kMsg;
-      pBD->changed = true;
-      pBD->countHDT++;
-      double MHeading=pBD->TrueHeading-pBD->Variation;
-      while (MHeading<0) MHeading+=PI_2;
-      while (MHeading>=PI_2) MHeading-=PI_2;
-      // Stupid Raymarine can not use true heading
-      SetN2kMagneticHeading(N2kMsg,1,MHeading,0,pBD->Variation);
-//      SetN2kPGNTrueHeading(N2kMsg,1,pBD->TrueHeading);
-      GwSendYD(N2kMsg);
-
-    if (NMEA0183HandlersDebugStream!=0) {
-      NMEA0183HandlersDebugStream->print("True heading="); NMEA0183HandlersDebugStream->println(pBD->TrueHeading);
-    }
-  } else if (NMEA0183HandlersDebugStream!=0) { NMEA0183HandlersDebugStream->println("Failed to parse HDT"); }
-}
 
 // Track made good and speed over ground
 void HandleVTG(const tNMEA0183Msg &NMEA0183Msg) {

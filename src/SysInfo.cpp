@@ -174,7 +174,6 @@ void displayBoat(Stream& s) {
     s.printf("LON %f\n", BoatData.Longitude);
     s.printf("RMC %d\n", BoatData.countRMC);
     s.printf("GGA %d\n", BoatData.countGGA);
-    s.printf("HDT %d\n", BoatData.countHDT);
     s.printf("VTG %d\n", BoatData.countVTG);
     s.printf("GLL %d\n", BoatData.countGLL);
     s.printf("GSA %d\n", BoatData.countGSA);

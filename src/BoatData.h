@@ -23,7 +23,6 @@ struct tBoatData {
         DGPSReferenceStationID;
     uint32_t countRMC,
         countGGA,
-        countHDT,
         countVTG,
         countGLL,
         countGSA,
@@ -48,7 +47,6 @@ public:
         DGPSReferenceStationID = 0;
         countRMC =
             countGGA =
-            countHDT =
             countVTG =
             countGLL =
             countGSA =
