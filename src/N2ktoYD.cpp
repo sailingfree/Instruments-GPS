@@ -44,8 +44,6 @@ extern Stream* Console;
 // We listenon this port
 static const int YDudpPort = 4445;  // Non standard for local devices only
 
-static u_char SID = 0xff;             // Identify this source 
-
 // Create UDP instance for sending YD messages
 WiFiUDP     YDSendUDP;
 
@@ -54,9 +52,9 @@ WiFiUDP     YDSendUDP;
 static char YD_msg[Max_YD_Message_Size] = "";
 
 void gpsInit() {
-
+    
 // Leave this at 9600 for reliability. The software serial dropped data    
-//    config_ublox(GPSBaud);   
+//    config_ublox(GPSBaud);
     
     ss.begin(GPSBaud);
 
@@ -73,25 +71,6 @@ void handleNMEA0183() {
     NMEA0183_3.ParseMessages();
 }
 
-
-// Convert the date to days since 1970
-uint32_t dateToDaysSince1970(prog_uint32_t year, uint32_t month, uint32_t day) {
-    struct tm t;
-    time_t t_of_day;
-
-    t.tm_year = year;
-    t.tm_mon = month;           // Month, where 0 = jan
-    t.tm_mday = day;          // Day of the month
-    t.tm_hour = 0;
-    t.tm_min = 0;
-    t.tm_sec = 0;
-    t.tm_isdst = 0;        // Is DST on? 1 = yes, 0 = no, -1 = unknown
-    t_of_day = mktime(&t);
-
-    Serial.printf("seconds since the Epoch: %ld Y %d M %d D %d\n", (long) t_of_day, year, month, day);
-    Serial.printf("Days since 1970 %d\n", t_of_day / (60 * 60 * 24));
-    return t_of_day;
-}
 
 /**
  * @name: N2kToYD_Can
@@ -152,67 +131,3 @@ void GwSendYD(const tN2kMsg& N2kMsg) {
     if (N2kToSeasmart(N2kMsg, millis(), buf, MAX_NMEA2000_MESSAGE_SEASMART_SIZE) == 0) return;
 }
 
-// Given a tinygps object construct an n2k gps messages and send it to the YD target
-void sendYD(TinyGPSPlus& gps) {
-    tN2kMsg N2kMsg;
-
-    TinyGPSTime t = gps.time;
-    TinyGPSDate gpsDate = gps.date;
-
-    Serial.printf("Date value %d\n", gpsDate.value());
-    uint16_t daysSince1970 = 1;
-    double secondsSinceMidnight = t.second() + (t.minute() * 60) + (t.hour() * 60 * 60);
-    double latitude = gps.location.lat();
-    double longitude = gps.location.lng();
-    double altitude = gps.altitude.meters();
-    unsigned char nSatellites = gps.satellites.value();
-    double hdop = gps.hdop.hdop();
-    double pdop = 0.0;
-
-    uint16_t d = dateToDaysSince1970(gps.date.year(), gps.date.month(), gps.date.day());
-
-    SetN2kGNSS(N2kMsg,          //Reference to a N2kMsg Object
-        SID,                    // SID
-        daysSince1970,          // UTC date in resolution of 1 day
-        secondsSinceMidnight,   // UTC time in seconds
-        latitude,               // Latitude in degrees
-        longitude,              // Longitude in degrees
-        altitude,               // Altitude in metres
-        N2kGNSSt_GPS,           // GNSS type
-        N2kGNSSm_GNSSfix,       // GNSS method
-        nSatellites,            // number of satellites
-        hdop,                   // Horizontal Dilution Of Precision in meters
-        pdop,                   // Probable dilution of precision in meters.
-        0,                      // Geoidal separation in meters
-        0,                      // Number of Reference Stations
-        N2kGNSSt_GPS,           // Reference station type
-        0,                     // Reference Station ID 
-        0);                     // Age of DGNSS Corrections
-
-    GwSendYD(N2kMsg);
-
-
-    // And the course and speed from the GPS
-    double courseOverGround = gps.course.deg() * DEG_TO_RAD;     // Course Over Ground in radians
-    double speedOverground = gps.speed.mps();                   // Speed Over Ground in m/s
-    
-    SetN2kCOGSOGRapid(N2kMsg,
-        SID,          // SID
-        N2khr_true,         ///< heading true (eg. GNSS) direction 
-        courseOverGround,
-        speedOverground);
-
-    GwSendYD(N2kMsg);
-
-    // Send our product information
-    SetN2kPGN126996(N2kMsg,
-        1,
-        16,
-        "Naiad YD GPS",
-        "1.0",
-        "1.0.0",
-        "1.0.0",
-        1,
-        1);
-    GwSendYD(N2kMsg);
-}

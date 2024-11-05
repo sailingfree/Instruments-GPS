@@ -21,7 +21,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include <Arduino.h>
-//#include <Esp.h>
 #include <GwPrefs.h>
 #include <NMEA0183Messages.h>
 #include <SysInfo.h>
@@ -38,7 +37,6 @@ void getNetInfo(Stream& s) {
 
     s.println("=========== NETWORK ==========");
     s.printf("HOST NAME: %s\n", hostName.c_str());
-    //    s.printf("MAC: %s\n", macAddress.c_str());
     s.printf("WifiMode %s\n", WifiMode.c_str());
     s.printf("WifiIP %s\n", WifiIP.c_str());
     s.printf("WifiSSID %s\n", WifiSSID.c_str());

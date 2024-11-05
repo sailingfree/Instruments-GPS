@@ -34,7 +34,6 @@ void HandleGSA(const tNMEA0183Msg& NMEA0183Msg);
 void HandleGSV(const tNMEA0183Msg& NMEA0183Msg);
 
 // Internal variables
-//tNMEA2000 *pNMEA2000=0;
 tBoatData* pBD = 0;
 Stream* NMEA0183HandlersDebugStream = NULL;
 
@@ -87,7 +86,9 @@ void HandleRMC(const tNMEA0183Msg& NMEA0183Msg) {
     pBD->changed = true;
     pBD->countRMC++;
   }
-  else if (NMEA0183HandlersDebugStream != 0) { NMEA0183HandlersDebugStream->println("Failed to parse RMC"); }
+  else if (NMEA0183HandlersDebugStream != 0) {
+    NMEA0183HandlersDebugStream->println("Failed to parse RMC");
+  }
 }
 
 // Time, position, and fix related data
@@ -139,9 +140,9 @@ void HandleVTG(const tNMEA0183Msg& NMEA0183Msg) {
     SetN2kCOGSOGRapid(N2kMsg, 1, N2khr_true, pBD->COG, pBD->SOG);
     GwSendYD(N2kMsg);
 
-    //    if (NMEA0183HandlersDebugStream!=0) {
-    //      NMEA0183HandlersDebugStream->print("True heading="); NMEA0183HandlersDebugStream->println(pBD->TrueHeading);
-    //    }
+    if (NMEA0183HandlersDebugStream != 0) {
+      NMEA0183HandlersDebugStream->print("True heading="); NMEA0183HandlersDebugStream->println(pBD->TrueHeading);
+    }
   }
   else if (NMEA0183HandlersDebugStream != 0) { NMEA0183HandlersDebugStream->println("Failed to parse VTG"); }
 }
@@ -164,8 +165,10 @@ void HandleGSV(const tNMEA0183Msg& NMEA0183Msg) {
     msg1, msg2, msg3, msg4)) {
 
     pBD->countGSV++;
-    //        Serial.printf("GSV total %d this %d sats %d 1.SNR %f 2.SNR %f 3. SNR %f 4.SNR %f\n",
-    //          totalMsg, thisMsg, satCount, msg1.SNR, msg2.SNR, msg3.SNR, msg4.SNR);
+    if (NMEA0183HandlersDebugStream != 0) {
+      Serial.printf("GSV total %d this %d sats %d 1.SNR %f 2.SNR %f 3. SNR %f 4.SNR %f\n",
+        totalMsg, thisMsg, satCount, msg1.SNR, msg2.SNR, msg3.SNR, msg4.SNR);
+    }
   }
 }
 
@@ -175,5 +178,7 @@ void HandleGLL(const tNMEA0183Msg& NMEA0183Msg) {
   char buf[200];
   pBD->countGLL++;
   NMEA0183Msg.GetMessage(buf, 199);
-  //      Serial.printf("%s\n", buf);
+  if (NMEA0183HandlersDebugStream != 0) {
+    Serial.printf("%s\n", buf);
+  }
 }

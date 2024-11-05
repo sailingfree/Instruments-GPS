@@ -28,7 +28,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 
 extern std::map<String, String> Gps;
-//extern std::map<int, tGSV> Satellites;
+extern std::map<int, tGSV> Satellites;
 extern std::map<String, String> Sensors;
 
 extern String WifiMode, WifiIP, WifiSSID;
