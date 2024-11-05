@@ -27,7 +27,7 @@
 static const int RXPin = SERIAL_RX,
                 TXPin = CYD_SCL_PIN;   // Shared with the i2c so only use one at a time
 
-static const uint32_t GPSBaud = 38400;
+static const uint32_t GPSBaud = 9600;
 
 // The NMEA0183 object
 tNMEA0183 NMEA0183_3;
@@ -54,8 +54,9 @@ WiFiUDP     YDSendUDP;
 static char YD_msg[Max_YD_Message_Size] = "";
 
 void gpsInit() {
-    
-    config_ublox(GPSBaud);
+
+// Leave this at 9600 for reliability. The software serial dropped data    
+//    config_ublox(GPSBaud);   
     
     ss.begin(GPSBaud);
 
