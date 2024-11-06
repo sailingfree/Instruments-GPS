@@ -17,6 +17,7 @@
 #include <map>
 #include <GwPrefs.h>
 #include <GwShell.h>
+#include <GwTelnet.h>
 #include <ublox_6m_config.h>
 #include <defines.h>
 #include <N2ktoYD.h>
@@ -262,6 +263,9 @@ void loop() {
         BoatData.changed = false;
     }
 
+    // handle the telnet session
+    handleTelnet();
 
+    // Run any shell commands
     handleShell();
 }
