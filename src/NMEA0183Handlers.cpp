@@ -85,6 +85,10 @@ void HandleRMC(const tNMEA0183Msg& NMEA0183Msg) {
   if (NMEA0183ParseRMC_nc(NMEA0183Msg, pBD->GPSTime, pBD->Latitude, pBD->Longitude, pBD->COG, pBD->SOG, pBD->DaysSince1970, pBD->Variation)) {
     pBD->changed = true;
     pBD->countRMC++;
+
+    tN2kMsg N2kMsg;
+    SetN2kCOGSOGRapid(N2kMsg, 1, N2khr_true, pBD->COG, pBD->SOG);
+    GwSendYD(N2kMsg);
   }
   else if (NMEA0183HandlersDebugStream != 0) {
     NMEA0183HandlersDebugStream->println("Failed to parse RMC");
@@ -126,17 +130,19 @@ void HandleGGA(const tNMEA0183Msg& NMEA0183Msg) {
 
 // Track made good and speed over ground
 void HandleVTG(const tNMEA0183Msg& NMEA0183Msg) {
-  return;  // Disabled for now as I'm not sure this gives useful results at least in the lab when stationary
+
   double MagneticCOG;
 
   if (pBD == 0) return;
+  pBD->countVTG++;
+  return;  // Disabled for now as I'm not sure this gives useful results at least in the lab when stationary
 
   if (NMEA0183ParseVTG_nc(NMEA0183Msg, pBD->COG, MagneticCOG, pBD->SOG)) {
     pBD->Variation = pBD->COG - MagneticCOG; // Save variation for Magnetic heading
 
     tN2kMsg N2kMsg;
     pBD->changed = true;
-    pBD->countVTG++;
+
     SetN2kCOGSOGRapid(N2kMsg, 1, N2khr_true, pBD->COG, pBD->SOG);
     GwSendYD(N2kMsg);
 

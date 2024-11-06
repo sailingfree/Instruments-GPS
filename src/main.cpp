@@ -27,8 +27,8 @@ extern tBoatData BoatData;
 SET_LOOP_TASK_STACK_SIZE(16 * 1024);
 
 // Global objects and variables
-String hostName;
-String Model = "Naiad N2K GPS ";
+String hostName = "Naiad_YD_GPS";
+String Model = "Naiad YD GPS ";
 
 // Map for the wifi access points
 typedef struct {
@@ -105,38 +105,41 @@ static void printInt(unsigned long val, int len, StringStream& target) {
 // Connect to a wifi AP
 // Try all the configured APs
 bool connectWifi() {
-    int wifi_retry = 0;
+    int wifi_retry = 5;
 
     Serial.printf("There are %d APs to try\n", MaxAP);
 
-    for (int i = 0; i < MaxAP; i++) {
-        Serial.printf("\nTrying %s\n", wifiCreds[i].ssid.c_str());
-        WiFi.disconnect();
-        WiFi.mode(WIFI_OFF);
-        WiFi.mode(WIFI_STA);
-        display_write(DISPWifi, String("Trying SSID ") + wifiCreds[i].ssid);
-        WiFi.begin(wifiCreds[i].ssid.c_str(), wifiCreds[i].pass.c_str());
-        wifi_retry = 0;
+    do {
+        for (int i = 0; i < MaxAP; i++) {
+            Serial.printf("\nTrying %s\n", wifiCreds[i].ssid.c_str());
+            WiFi.disconnect();
+            WiFi.mode(WIFI_OFF);
+            WiFi.mode(WIFI_STA);
+            display_write(DISPWifi, String("Trying SSID ") + wifiCreds[i].ssid);
+            WiFi.begin(wifiCreds[i].ssid.c_str(), wifiCreds[i].pass.c_str());
+            wifi_retry = 0;
 
-        while (WiFi.status() != WL_CONNECTED && wifi_retry < 20) {  // Check connection, try 5 seconds
-            wifi_retry++;
-            delay(500);
-            Console->print(".");
+            while (WiFi.status() != WL_CONNECTED && wifi_retry < 20) {  // Check connection, try 5 seconds
+                wifi_retry++;
+                delay(500);
+                Console->print(".");
+            }
+            Console->println("");
+            if (WiFi.status() == WL_CONNECTED) {
+                WifiMode = "Client";
+                WifiSSID = wifiCreds[i].ssid;
+                WifiIP = WiFi.localIP().toString();
+                SSID = wifiCreds[i].ssid;
+                Console->printf("Connected to %s\n", wifiCreds[i].ssid.c_str());
+                display_write(DISPWifi, String("Connect to ") + wifiCreds[i].ssid);
+                return true;
+            }
+            else {
+                Console->printf("Can't connect to %s\n", wifiCreds[i].ssid.c_str());
+            }
         }
-        Console->println("");
-        if (WiFi.status() == WL_CONNECTED) {
-            WifiMode = "Client";
-            WifiSSID = wifiCreds[i].ssid;
-            WifiIP = WiFi.localIP().toString();
-            SSID = wifiCreds[i].ssid;
-            Console->printf("Connected to %s\n", wifiCreds[i].ssid.c_str());
-            display_write(DISPWifi, String("Connect to ") + wifiCreds[i].ssid);
-            return true;
-        }
-        else {
-            Console->printf("Can't connect to %s\n", wifiCreds[i].ssid.c_str());
-        }
-    }
+    } while (wifi_retry--);
+
     return false;
 }
 
@@ -210,9 +213,9 @@ void setup() {
 
     // Register host name in mDNS
 
-    if (MDNS.begin(hostName.c_str())) {
+    if (MDNS.begin(hostName)) {
         Console->print("* MDNS responder started. Hostname -> ");
-        Console->println(hostName);
+        Console->printf("Hostname %s\n", hostName.c_str());
     }
 
     // Register the services
