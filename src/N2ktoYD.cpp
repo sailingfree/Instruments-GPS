@@ -4,7 +4,6 @@
 #include <N2kMsg.h>
 #include <Seasmart.h>
 #include <WiFi.h>
-//#include <YDtoN2kUDP.h>
 #include <NMEA0183.h>
 #include <NMEA0183Msg.h>
 #include <NMEA0183Handlers.h>
@@ -17,21 +16,18 @@
 #include <SoftwareSerial.h>
 #include <GwPrefs.h>
 
-//#include <GwDefs.h>
-
-// Some ublox UBX code from here https://forum.arduino.cc/t/ubx-protocol-help-configuring-a-neo-6m-arduino-gps-module-fletcher-checksum/226600/10
-/*
-   This sample code demonstrates the normal use of a TinyGPSPlus (TinyGPSPlus) object.
-   It requires the use of SoftwareSerial, and assumes that you have a
-   9600-baud serial GPS device connected to the GPIOS defined below.
-*/
+// Define the pis used for the software serial device on the cheap yellow display
 static const int RXPin = SERIAL_RX,
-                TXPin = CYD_SCL_PIN;   // Shared with the i2c so only use one at a time
+TXPin = CYD_SCL_PIN;   // Shared with the i2c so only use one at a time
 
-static const uint32_t GPSBaud = 9600;
+// Leave this at 9600 for reliability. 
+// The software serial dropped data at higher rates
+static const uint32_t GPSBaud = 9600;   
 
 // The NMEA0183 object
 tNMEA0183 NMEA0183_3;
+
+// Where we save the incoming data from the GPS receiver
 tBoatData BoatData;
 
 // The serial connection to the GPS device
@@ -45,7 +41,6 @@ extern Stream* Console;
 // We send on this port
 static int YDudpPort = 4445;  // Non standard for local devices only
 
-
 // Create UDP instance for sending YD messages
 WiFiUDP     YDSendUDP;
 
@@ -54,15 +49,15 @@ WiFiUDP     YDSendUDP;
 static char YD_msg[Max_YD_Message_Size] = "";
 
 void gpsInit() {
-    
-// Leave this at 9600 for reliability. The software serial dropped data    
-//    config_ublox(GPSBaud);
-    
+
+
+    config_ublox(GPSBaud);
+
     // see if there is an alternate port set
     String ydvalstr = GwGetVal(GWYDPORT, "4445");
     int ydval = ydvalstr.toInt();
     Serial.printf("YD Port %s %d\n", ydvalstr.c_str(), ydval);
-    if(ydval > 1000 && ydval < 65535) {
+    if (ydval > 1000 && ydval < 65535) {
         YDudpPort = ydval;
     }
 
