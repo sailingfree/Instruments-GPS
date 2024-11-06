@@ -55,6 +55,7 @@ void config_ublox(uint16_t GPSBaud)
   myGPS.setUART1Output(COM_TYPE_NMEA); //Set the UART port to output NMEA only
 
   // set the dynamic mode to SEA and also sets the static lock threshold in cm/s
+  // 1 knot is 51.4 cm/s
   myGPS.setDynamicModel(DYN_MODEL_SEA, 1100U, 15);
   myGPS.saveConfiguration();
   mySerial.end();
