@@ -15,6 +15,7 @@
 #include <ublox_6m_config.h>
 #include <cyd_pins.h>
 #include <SoftwareSerial.h>
+#include <GwPrefs.h>
 
 //#include <GwDefs.h>
 
@@ -41,8 +42,9 @@ SoftwareSerial ss(RXPin, TXPin);
 extern Stream* Console;
 
 // UPD broadcast for Navionics, OpenCPN, etc.
-// We listenon this port
-static const int YDudpPort = 4445;  // Non standard for local devices only
+// We send on this port
+static int YDudpPort = 4445;  // Non standard for local devices only
+
 
 // Create UDP instance for sending YD messages
 WiFiUDP     YDSendUDP;
@@ -56,6 +58,14 @@ void gpsInit() {
 // Leave this at 9600 for reliability. The software serial dropped data    
 //    config_ublox(GPSBaud);
     
+    // see if there is an alternate port set
+    String ydvalstr = GwGetVal(GWYDPORT, "4445");
+    int ydval = ydvalstr.toInt();
+    Serial.printf("YD Port %s %d\n", ydvalstr.c_str(), ydval);
+    if(ydval > 1000 && ydval < 65535) {
+        YDudpPort = ydval;
+    }
+
     ss.begin(GPSBaud);
 
     // Setup NMEA0183 ports and handlers
