@@ -266,6 +266,9 @@ void loop() {
         BoatData.changed = false;
     }
 
+    // Read the sensors
+    handleSensors();
+
     // handle the telnet session
     handleTelnet();
 

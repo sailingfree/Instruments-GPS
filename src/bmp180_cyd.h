@@ -8,3 +8,4 @@
 void setup_bmp180();
 float get_temperature();
 float get_pressure();
+void handleSensors();
