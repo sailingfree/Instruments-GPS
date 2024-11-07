@@ -101,19 +101,6 @@ void getSysInfo(Stream& s) {
     s.println("=========== END ==========");
 }
 
-void getGps(Stream& s) {
-    /*
-    std::map<String, String>::iterator it = Gps.begin();
-    s.println("=========== GPS ==========");
-
-    while (it != Gps.end()) {
-        s.printf("%s %s\n", it->first.c_str(), it->second.c_str());
-        it++;
-    }
-    */
-    s.println("=========== END ==========");
-}
-
 void getSatellites(Stream& s) {
     time_t now = time(NULL);
     /*
@@ -143,19 +130,6 @@ void getSensors(Stream& s) {
 //        s.printf("%s %s\n", it->first.c_str(), it->second.c_str());
 //        it++;
 //    }
-    s.println("=========== END ==========");
-}
-
-//extern std::map<int, int> N2kMsgMap;
-void getN2kMsgs(Stream& s) {
-    //   std::map<int, int>::iterator it = N2kMsgMap.begin();
-
-    s.println("======== N2K Messages ====");
-
-    //    while (it != N2kMsgMap.end()) {
-    //        s.printf("%d %d\n", it->first, it->second);
-     //       it++;
-     //   }
     s.println("=========== END ==========");
 }
 
