@@ -91,6 +91,7 @@ void HandleRMC(const tNMEA0183Msg& NMEA0183Msg) {
     GwSendYD(N2kMsg);
   }
   else if (NMEA0183HandlersDebugStream != 0) {
+    pBD->countFail++;
     NMEA0183HandlersDebugStream->println("Failed to parse RMC");
   }
 }
@@ -123,7 +124,12 @@ void HandleGGA(const tNMEA0183Msg& NMEA0183Msg) {
       NMEA0183HandlersDebugStream->print("HDOP="); NMEA0183HandlersDebugStream->println(pBD->HDOP);
     }
   }
-  else if (NMEA0183HandlersDebugStream != 0) { NMEA0183HandlersDebugStream->println("Failed to parse GGA"); }
+  else {
+    pBD->countFail++;
+    if (NMEA0183HandlersDebugStream != 0) {
+      NMEA0183HandlersDebugStream->println("Failed to parse GGA");
+    }
+  }
 }
 
 #define PI_2 6.283185307179586476925286766559
@@ -150,7 +156,12 @@ void HandleVTG(const tNMEA0183Msg& NMEA0183Msg) {
       NMEA0183HandlersDebugStream->print("True heading="); NMEA0183HandlersDebugStream->println(pBD->TrueHeading);
     }
   }
-  else if (NMEA0183HandlersDebugStream != 0) { NMEA0183HandlersDebugStream->println("Failed to parse VTG"); }
+  else {
+    pBD->countFail++;
+    if (NMEA0183HandlersDebugStream != 0) {
+      NMEA0183HandlersDebugStream->println("Failed to parse VTG");
+    }
+  }
 }
 
 // GPS DOP and active satellites
@@ -175,6 +186,9 @@ void HandleGSV(const tNMEA0183Msg& NMEA0183Msg) {
       Serial.printf("GSV total %d this %d sats %d 1.SNR %f 2.SNR %f 3. SNR %f 4.SNR %f\n",
         totalMsg, thisMsg, satCount, msg1.SNR, msg2.SNR, msg3.SNR, msg4.SNR);
     }
+  }
+  else {
+    pBD->countFail++;
   }
 }
 
