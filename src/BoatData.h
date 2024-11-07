@@ -26,7 +26,8 @@ struct tBoatData {
         countVTG,
         countGLL,
         countGSA,
-        countGSV;
+        countGSV,
+        countFail;
 
     bool MOBActivated;
 
@@ -50,7 +51,8 @@ public:
             countVTG =
             countGLL =
             countGSA =
-            countGSV = 0;
+            countGSV = 
+            countFail = 0;
     };
 };
 

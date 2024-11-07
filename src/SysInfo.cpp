@@ -176,5 +176,6 @@ void displayBoat(Stream& s) {
     s.printf("GLL %d\n", BoatData.countGLL);
     s.printf("GSA %d\n", BoatData.countGSA);
     s.printf("GSV %d\n", BoatData.countGSV);
+    s.printf("Fail %d\n", BoatData.countFail);
 
 }
