@@ -19,6 +19,10 @@ Author: Timo Lappalainen
 #include <NMEA0183Messages.h>
 #include "NMEA0183Handlers.h"
 #include <N2ktoYD.h>
+#include <map>
+
+// Map for the satellite informations
+std::map<int, tGSV> Satellites;
 
 struct tNMEA0183Handler {
   const char* Code;
@@ -181,11 +185,24 @@ void HandleGSV(const tNMEA0183Msg& NMEA0183Msg) {
   if (NMEA0183ParseGSV(NMEA0183Msg, totalMsg, thisMsg, satCount,
     msg1, msg2, msg3, msg4)) {
 
-    pBD->countGSV++;
-    if (NMEA0183HandlersDebugStream != 0) {
-      Serial.printf("GSV total %d this %d sats %d 1.SNR %f 2.SNR %f 3. SNR %f 4.SNR %f\n",
-        totalMsg, thisMsg, satCount, msg1.SNR, msg2.SNR, msg3.SNR, msg4.SNR);
+    if (thisMsg == 1) {
+      Satellites.clear();     // Start from scratch in case they have changed since last cycle   
     }
+
+    pBD->countGSV++;
+
+
+    Satellites[msg1.SVID] = msg1;
+    Satellites[msg2.SVID] = msg2;
+    Satellites[msg3.SVID] = msg3;
+    Satellites[msg4.SVID] = msg4;
+    
+
+
+
+  //    Serial.printf("GSV total %d this %d sats %d 1.SNR %f 2.SNR %f 3. SNR %f 4.SNR %f\n",
+  //      totalMsg, thisMsg, satCount, msg1.SNR, msg2.SNR, msg3.SNR, msg4.SNR);
+
   }
   else {
     pBD->countFail++;

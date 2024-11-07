@@ -102,34 +102,36 @@ void getSysInfo(Stream& s) {
 }
 
 void getSatellites(Stream& s) {
-    time_t now = time(NULL);
-    /*
-        std::map<int, tGSV>::iterator it = Satellites.begin();
-        // the map may have changed so go through it again
-        it = Satellites.begin();
-        s.println("=========== GPS Satellites==========");
-        s.printf("Satellites %s\n", Gps["GSV sats"].c_str());
-        s.printf("SVID\tAZ\tELEV\tSNR\n");
-        while (it != Satellites.end()) {
-            tGSV sat = it->second;
-            if (sat.Azimuth != NMEA0183DoubleNA && sat.Elevation != NMEA0183DoubleNA && sat.SNR != NMEA0183DoubleNA) {
-                s.printf("%d\t%g\t%g\t%g\n", sat.SVID, sat.Azimuth, sat.Elevation, sat.SNR);
-            }
-            it++;
+    uint32_t totalFound = 0;
+
+    std::map<int, tGSV>::iterator it = Satellites.begin();
+    // the map may have changed so go through it again
+    it = Satellites.begin();
+    s.println("=========== GPS Satellites==========");
+    s.printf("HDOP %f\n", BoatData.HDOP);
+
+    s.printf("SVID\tAZ\tELEV\tSNR\n");
+    while (it != Satellites.end()) {
+        tGSV sat = it->second;
+        if (sat.Azimuth != NMEA0183DoubleNA && sat.Elevation != NMEA0183DoubleNA && sat.SNR != NMEA0183DoubleNA) {
+            s.printf("%d\t%g\t%g\t%g\n", sat.SVID, sat.Azimuth, sat.Elevation, sat.SNR);
+            totalFound++;
         }
-    */
+        it++;
+    }
+    s.printf("Found  %d Satellites \n", totalFound);
     s.println("================ END ===============");
 }
 
 void getSensors(Stream& s) {
-    std::map<String, String>::iterator it = Sensors.begin();
+    std::map<String, float>::iterator it = Sensors.begin();
 
     s.println("=========== SENSORS ==========");
 
-//    while (it != Sensors.end()) {
-//        s.printf("%s %s\n", it->first.c_str(), it->second.c_str());
-//        it++;
-//    }
+    while (it != Sensors.end()) {
+        s.printf("%s %f\n", it->first.c_str(), it->second);
+        it++;
+    }
     s.println("=========== END ==========");
 }
 
