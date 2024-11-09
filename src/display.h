@@ -2,6 +2,7 @@
 #pragma once 
 
 #include <Arduino.h>
+#include <lvgl.h>
 
 // define the objects that can be displayed
 // These are used as keys
