@@ -1,4 +1,7 @@
+
 // Fonts
+extern lv_font_t RobotoCondensedVariableFont_wght8;
+extern lv_font_t RobotoCondensedVariableFont_wght12;
 extern lv_font_t RobotoCondensedVariableFont_wght16;
 extern lv_font_t RobotoCondensedVariableFont_wght24;
 extern lv_font_t RobotoCondensedVariableFont_wght32;

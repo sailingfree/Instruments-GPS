@@ -260,7 +260,7 @@ void loop() {
         String space(" ");
         display_write(GNSS_HDOP, BoatData.HDOP, "", 2);
         display_write(GNSS_LAT, BoatData.Latitude, "", 6);
-        display_write(GNSS_LONG, BoatData.Longitude, "", 2);
+        display_write(GNSS_LONG, BoatData.Longitude, "", 6);
         display_write(GNSS_SATS, BoatData.SatelliteCount, "", 0);
         display_write(GNSS_SOG, BoatData.SOG, "", 1);
         display_write(GNSS_COG, BoatData.COG, "", 0);

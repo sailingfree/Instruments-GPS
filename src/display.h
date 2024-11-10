@@ -9,12 +9,14 @@
 
 // Define the positions of elements on the screen.
 // The elements are laid out in a grid with a header and footer
-#define IND_HEIGHT      (TFT_HEIGHT / 4)
-#define IND_WIDTH       (TFT_WIDTH / 2)
 #define BAR_HEIGHT      (TFT_HEIGHT / 8)
+#define BAR_MENU_HEIGHT (TFT_HEIGHT / 6) 
 #define BAR_WIDTH       (TFT_WIDTH)
 #define BAR_ROW_TOP     (0)
-#define BAR_ROW_BOTTOM  (TFT_HEIGHT - BAR_HEIGHT)
+#define BAR_ROW_BOTTOM  (TFT_HEIGHT - BAR_MENU_HEIGHT)
+#define BODY_HEIGHT     (TFT_HEIGHT - BAR_HEIGHT - BAR_MENU_HEIGHT)
+#define IND_HEIGHT      (BODY_HEIGHT / 3)
+#define IND_WIDTH       (TFT_WIDTH / 2)
 #define ROW1            (BAR_HEIGHT)
 #define ROW2            (ROW1 + IND_HEIGHT)
 #define ROW3            (ROW2 + IND_HEIGHT)
