@@ -5,6 +5,7 @@
 #include <lvgl.h>
 #include <esp32_smartdisplay.h>
 #include <myFonts.h>
+#include <StringStream.h>
 
 static const uint32_t border = 1, padding = 0;
 
@@ -99,7 +100,7 @@ InfoBar::InfoBar(lv_obj_t* parent, uint32_t y) {
     lv_style_set_bg_color(&value_style, lv_palette_main(LV_PALETTE_BLUE));
     lv_style_set_text_color(&value_style, lv_color_white());
     lv_style_set_pad_all(&value_style, 10);
-    lv_style_set_text_font(&value_style, &RobotoCondensedVariableFont_wght32);
+    lv_style_set_text_font(&value_style, &RobotoCondensedVariableFont_wght24);
     lv_obj_add_style(text, &value_style, 0);
     lv_obj_set_align(text, LV_ALIGN_LEFT_MID);
 
@@ -325,6 +326,13 @@ void setup_display() {
 void display_write(MeterIdx obj, double value, const char* units, uint32_t prec) {
     ind[SCR_GPS][obj]->setValue(value, units, prec);
     metersWork();
+}
+
+// Upadte the time on the screen
+void updateTime(StringStream t) {
+    bars[SCR_GPS]->setTime(t.data.c_str());
+    bars[SCR_SKY]->setTime(t.data.c_str());
+    bars[SCR_INFO1]->setTime(t.data.c_str());
 }
 
 // Update the meters. Called regularly from the main loop/task

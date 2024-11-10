@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <lvgl.h>
+#include <StringStream.h>
 
 #define HEIGH_IND   (TFT_HEIGHT/4)
 #define HEIGHT_INFO (TFT_HEIGHT/8)
@@ -122,4 +123,5 @@ typedef struct Buttons {
 
 void setup_display();
 void display_write(MeterIdx obj, double value, const char * units, uint32_t precision);
+void updateTime(StringStream t);
 void metersWork(void);

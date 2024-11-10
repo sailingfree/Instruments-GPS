@@ -254,7 +254,7 @@ void loop() {
 
         struct tm* tm;
         tm = gmtime(&gpstime);
-        Time.printf("%02d:%02d:%02d %d-%d-%d\n", tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
+        Time.printf("%02d:%02d:%02d %d-%d-%d", tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
 
 
         String space(" ");
@@ -264,6 +264,7 @@ void loop() {
         display_write(GNSS_SATS, BoatData.SatelliteCount, "", 0);
         display_write(GNSS_SOG, BoatData.SOG, "", 1);
         display_write(GNSS_COG, BoatData.COG, "", 0);
+        updateTime(Time);
         BoatData.changed = false;
     }
 
