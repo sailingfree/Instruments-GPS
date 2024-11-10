@@ -1,48 +1,327 @@
 // Display information on the screen
 
-#include <TFT_eSPI.h>
 #include <display.h>
 #include <cyd_pins.h>
+#include <lvgl.h>
+#include <esp32_smartdisplay.h>
+#include <myFonts.h>
+
+static const uint32_t border = 1, padding = 0;
+
+//Txt text[DISPEnd];
+
+lv_obj_t * screens[SCR_MAX];
+static Indicator* ind[SCR_MAX][12];
+static InfoBar  *bars[SCR_MAX];
+// define text areas
+static lv_obj_t* textAreas[SCR_MAX];
+
+// Constructor. Binds to the parent object.
+Indicator::Indicator(lv_obj_t* parent, const char* name, uint32_t x, uint32_t y) {
+    container = lv_obj_create(parent);
+    lv_obj_set_pos(container, x, y);
+    lv_obj_set_width(container, IND_WIDTH - (2 * padding));
+    lv_obj_set_height(container, IND_HEIGHT - (2 * padding));
+
+    lv_style_init(&style);
+    lv_style_set_border_width(&style, border);
+    lv_obj_add_style(container, &style, 0);
+
+    lv_obj_set_layout(container, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+
+    label = lv_label_create(container);
+    lv_label_set_text(label, name);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
 
-// The TFT display
-TFT_eSPI tft = TFT_eSPI();
+    lv_style_init(&text_style);
+    lv_style_set_text_font(&text_style, &RobotoCondensedVariableFont_wght16);
+    lv_obj_add_style(label, &text_style, 0);
 
-Txt text[DISPEnd];
+    text = lv_label_create(container);
+    lv_style_init(&value_style);
+    lv_style_set_text_font(&value_style, &RobotoCondensedVariableFont_wght32);
+    lv_obj_add_style(text, &value_style, 0);
+    lv_obj_set_style_text_align(text, LV_TEXT_ALIGN_CENTER, 0);
 
-void setup_display() {
-// Start the tft display and set it to black
-  tft.init();
-  tft.setRotation(1); //This is the display in landscape
-  
-  // Clear the screen before writing to it
-  tft.fillScreen(TFT_BLACK);
-  
+    lv_label_set_text(text, "---");
+}
+
+// Change the text size
+void Indicator::setFont(const lv_font_t *value) {
+    lv_style_set_text_font(&value_style, value);
+}
+
+// set the value using a double and precision. 
+void Indicator::setValue(double value, const char* units, uint32_t prec) {
+    String v(value, prec);
+    v += units;
+    setValue(v.c_str());
+}
+
+void Indicator::setValue(const char* value) {
+    lv_label_set_text(text, value);
+}
+
+// Constructor. Binds to the parent object.
+// Info bar has the screen title and the time
+InfoBar::InfoBar(lv_obj_t* parent, uint32_t y) {
+    static lv_style_t style;
+    static lv_style_t value_style;
+
+    container = lv_obj_create(parent);
+    lv_obj_set_pos(container, 0, y);
+    lv_obj_set_width(container, (BAR_WIDTH) - (2 * padding));
+    lv_obj_set_height(container, (BAR_HEIGHT) - 2 * padding);
+    lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_style_init(&style);
+    lv_style_set_border_width(&style, border);
+
+    lv_style_set_radius(&style, 3);
+
+    lv_style_set_bg_opa(&style, LV_OPA_100);
+    lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_BLUE));
+
+    lv_obj_add_style(container, &style, 0);
+
+//    lv_obj_set_layout(container, LV_LAYOUT_FLEX);
+//    lv_obj_set_flex_flow(container, LV_FLEX_FLOW_ROW);
+
+    // Title text
+    text = lv_label_create(container);
+    lv_style_init(&value_style);
+    lv_style_set_bg_opa(&value_style, LV_OPA_100);
+    lv_style_set_bg_color(&value_style, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_text_color(&value_style, lv_color_white());
+    lv_style_set_pad_all(&value_style, 10);
+    lv_style_set_text_font(&value_style, &RobotoCondensedVariableFont_wght32);
+    lv_obj_add_style(text, &value_style, 0);
+    lv_obj_set_align(text, LV_ALIGN_LEFT_MID);
+
+    curTime = lv_label_create(container);
+    lv_obj_add_style(curTime, &value_style, 0);
+    lv_label_set_text(curTime, "00:00:00");
+    lv_obj_set_align(curTime, LV_ALIGN_RIGHT_MID);
+}
+
+MenuBar::MenuBar(lv_obj_t* parent, uint32_t y) {
+    // Constructor. Binds to the parent object.
+    static lv_style_t style;
+
+    container = lv_obj_create(parent);
+    lv_obj_set_pos(container, 0, y);
+    lv_obj_set_width(container, (BAR_WIDTH)-2 * padding);
+    lv_obj_set_height(container, BAR_HEIGHT);
+    lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_style_init(&style);
+    lv_style_set_border_width(&style, border);
+    lv_obj_add_style(container, &style, 0);
+
+    lv_obj_set_layout(container, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(container, LV_FLEX_FLOW_ROW);
+}
+
+static void buttonHandler(lv_event_t* e) {
+
+    void* target = lv_event_get_user_data(e);
+    Screens s = reinterpret_cast <Screens&> (target);
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_CLICKED) {
+        if (s >= 0 && s < SCR_MAX && screens[s]) {
+          //  refreshData(s);
+            lv_scr_load(screens[s]);
+        }
+    }
+}
+
+// Add a button to a menu bar. The callbackl will change the screen to the target
+void MenuBar::addButton(const char* label, Screens target) {
+    lv_obj_t* b = lv_button_create(container);
+    lv_obj_t* l = lv_label_create(b);
+    lv_label_set_text(l, label);
+    lv_obj_set_flex_grow(b, 1);
+    /*Init the style for the default state*/
+    static lv_style_t style;
+    lv_style_init(&style);
+
+    lv_style_set_radius(&style, 3);
+
+    lv_style_set_bg_opa(&style, LV_OPA_100);
+    lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_bg_grad_color(&style, lv_palette_darken(LV_PALETTE_BLUE, 2));
+    lv_style_set_bg_grad_dir(&style, LV_GRAD_DIR_VER);
+
+    lv_style_set_border_opa(&style, LV_OPA_40);
+    lv_style_set_border_width(&style, 2);
+    lv_style_set_border_color(&style, lv_palette_main(LV_PALETTE_GREY));
+
+    lv_style_set_shadow_width(&style, 8);
+    lv_style_set_shadow_color(&style, lv_palette_main(LV_PALETTE_GREY));
+    lv_style_set_shadow_offset_y(&style, 8);
+
+    lv_style_set_outline_opa(&style, LV_OPA_COVER);
+    lv_style_set_outline_color(&style, lv_palette_main(LV_PALETTE_BLUE));
+
+    lv_style_set_text_color(&style, lv_color_white());
+    lv_style_set_pad_all(&style, 10);
+    //    lv_obj_remove_style_all(b);
+    lv_obj_add_style(b, &style, 0);
+    lv_obj_add_event_cb(b, buttonHandler, LV_EVENT_CLICKED, (void*)target);
 }
 
 
-void display_write(Obj obj, String str) {
+// Add a button to a menu bar. The callback will change the screen to the target
+// returns a pointer to the label object
+lv_obj_t *  MenuBar::addActionButton(const char* label, void (*ptr)(lv_event_t * e)) {
+    lv_obj_t* b = lv_button_create(container);
+    lv_obj_t* l = lv_label_create(b);
+    lv_label_set_text(l, label);
+    lv_obj_set_flex_grow(b, 1);
+    /*Init the style for the default state*/
+    static lv_style_t style;
+    lv_style_init(&style);
 
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    lv_style_set_radius(&style, 3);
 
-    uint16_t fontno = 4;
-    uint16_t wn = tft.textWidth(str, fontno);  // New width of string to display
-    uint16_t font_h = tft.fontHeight(fontno);
-    uint16_t x = 5;                             // Left margin
-    uint16_t y = obj * font_h;
+    lv_style_set_bg_opa(&style, LV_OPA_100);
+    lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_bg_grad_color(&style, lv_palette_darken(LV_PALETTE_BLUE, 2));
+    lv_style_set_bg_grad_dir(&style, LV_GRAD_DIR_VER);
 
-    // If the width of the new string is less than the previous
-    // clear to the end of the old    
-    if(wn < text[obj].w) {
-      tft.fillRect(x, y, text[obj].w, font_h, TFT_BLACK);
+    lv_style_set_border_opa(&style, LV_OPA_40);
+    lv_style_set_border_width(&style, 2);
+    lv_style_set_border_color(&style, lv_palette_main(LV_PALETTE_GREY));
+
+    lv_style_set_shadow_width(&style, 8);
+    lv_style_set_shadow_color(&style, lv_palette_main(LV_PALETTE_GREY));
+    lv_style_set_shadow_offset_y(&style, 8);
+
+    lv_style_set_outline_opa(&style, LV_OPA_COVER);
+    lv_style_set_outline_color(&style, lv_palette_main(LV_PALETTE_BLUE));
+
+    lv_style_set_text_color(&style, lv_color_white());
+    lv_style_set_pad_all(&style, 10);
+    //    lv_obj_remove_style_all(b);
+    lv_obj_add_style(b, &style, 0);
+    lv_obj_add_event_cb(b, ptr, LV_EVENT_CLICKED, NULL);
+
+    return l;
+}
+
+void InfoBar::setValue(const char* value) {
+    lv_label_set_text(text, value);
+}
+
+void InfoBar::setTime(const char * t) {
+   lv_label_set_text(curTime, t);
+}
+
+static void setupCommonstyles(lv_obj_t* obj) {
+    static lv_style_t style;
+    lv_obj_set_style_pad_gap(obj, padding, 0);
+
+    lv_obj_set_height(obj, TFT_HEIGHT);
+    lv_obj_set_width(obj, TFT_WIDTH);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+static void setupHeader(Screens scr, lv_obj_t* screen, const char* title) {
+    // Info bar at the tope
+    InfoBar* bar = new InfoBar(screen, BAR_ROW_TOP);
+    bars[scr] = bar;
+    bar->setValue(title);
+}
+
+static void setupMenu(lv_obj_t* screen) {
+    MenuBar* menuBar = new MenuBar(screen, BAR_ROW_BOTTOM);
+    menuBar->addButton("GPS", SCR_GPS);
+    menuBar->addButton("Sky", SCR_SKY);
+    menuBar->addButton("Info", SCR_INFO1);
+}
+
+lv_obj_t * createGpsScreen() {
+    lv_obj_t * screen = lv_obj_create(NULL);
+
+    setupCommonstyles(screen);
+    setupHeader(SCR_GPS, screen, "GPS");
+
+    // Create a text area to display the info text
+    textAreas[SCR_GPS] = lv_textarea_create(screen);
+    lv_obj_set_size(textAreas[SCR_GPS], TFT_WIDTH, TFT_HEIGHT - (2 * HEIGHT_INFO));
+    lv_obj_align(textAreas[SCR_GPS], LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_text_font(textAreas[SCR_GPS], &UbuntuMonoB16, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ind[SCR_GPS][GNSS_HDOP] = new Indicator(screen, "HDOP", COL1, ROW1);
+    ind[SCR_GPS][GNSS_SATS] = new Indicator(screen, "Sats", COL2, ROW1);
+    ind[SCR_GPS][GNSS_LAT] = new Indicator(screen, "LAT", COL1, ROW2);
+    ind[SCR_GPS][GNSS_LONG] = new Indicator(screen, "LON", COL2, ROW2);
+    ind[SCR_GPS][GNSS_SOG] = new Indicator(screen, "SOG Kts", COL1, ROW3);
+    ind[SCR_GPS][GNSS_COG] = new Indicator(screen, "COG deg", COL2, ROW3);
+
+    // Reduce the font size for the lat/lon
+//    ind[SCR_GPS][GNSS_LAT]->setFont(&RobotoCondensedVariableFont_wght52);
+//    ind[SCR_GPS][GNSS_LONG]->setFont(&RobotoCondensedVariableFont_wght52);
+//    ind[SCR_GPS][GNSS_SOG]->setFont(&RobotoCondensedVariableFont_wght52);
+//    ind[SCR_GPS][GNSS_COG]->setFont(&RobotoCondensedVariableFont_wght52);
+
+    setupMenu(screen);
+    return screen;
+}
+
+lv_obj_t * createSkyScreen() {
+    lv_obj_t * screen = lv_obj_create(NULL);
+
+    return screen;
+}
+
+lv_obj_t * createInfo1Screen() {
+    lv_obj_t * screen = lv_obj_create(NULL);
+
+    return screen;
+}
+
+
+void setup_display() {
+
+    smartdisplay_init();
+    smartdisplay_lcd_set_backlight(1.0f);
+    lv_display_set_rotation(NULL, LV_DISPLAY_ROTATION_90);
+
+    lv_theme_t* theme = NULL;
+
+    lv_disp_t* dispp = lv_disp_get_default();
+    theme = lv_theme_default_init(dispp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
+        false, &RobotoCondensedVariableFont_wght24);
+
+    //theme = lv_theme_mono_init(dispp, false, &lv_font_montserrat_24);
+    theme = lv_theme_mono_init(dispp, false, &RobotoCondensedVariableFont_wght32);
+
+    if (theme) {
+        lv_disp_set_theme(dispp, theme);
     }
+    // Create the screens
+    screens[SCR_GPS] = createGpsScreen();
+    screens[SCR_SKY] = createSkyScreen();
+    screens[SCR_INFO1] = createInfo1Screen();
 
-    tft.drawString(str, x, y, fontno);
+    lv_scr_load(screens[SCR_GPS]);
+}
 
-    // Save the coords and width for the next update
-    text[obj].x = x;
-    text[obj].y = y;
-    text[obj].w = wn;
-    text[obj].h = font_h;
 
+void display_write(MeterIdx obj, double value, const char * units,  uint32_t prec) {
+    ind[SCR_GPS][obj]->setValue(value, units, prec);
+    metersWork();
+}
+
+// Update the meters. Called regularly from the main loop/task
+void metersWork(void) {
+    static const uint32_t tick_delay = 50;
+    lv_task_handler(); /* let the GUI do its work */
+    lv_tick_inc(tick_delay);
+    delay(tick_delay);
 }

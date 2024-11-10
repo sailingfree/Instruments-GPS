@@ -4,20 +4,22 @@
 #include <Arduino.h>
 #include <lvgl.h>
 
-// define the objects that can be displayed
-// These are used as keys
-typedef enum {
-    DISPWifi,
-    DISPDateTime,
-    DISPPosition,
-    DISPHDOP,
-    DISPSats,
-    DISPSpeed,
-    DISPCourse,
-    DISPDistance,
-    DISPCompass,
-    DISPEnd
-} Obj;
+#define HEIGH_IND   (TFT_HEIGHT/4)
+#define HEIGHT_INFO (TFT_HEIGHT/8)
+
+// Define the positions of elements on the screen.
+// The elements are laid out in a grid with a header and footer
+#define IND_HEIGHT      (TFT_HEIGHT / 4)
+#define IND_WIDTH       (TFT_WIDTH / 2)
+#define BAR_HEIGHT      (TFT_HEIGHT / 8)
+#define BAR_WIDTH       (TFT_WIDTH)
+#define BAR_ROW_TOP     (0)
+#define BAR_ROW_BOTTOM  (TFT_HEIGHT - BAR_HEIGHT)
+#define ROW1            (BAR_HEIGHT)
+#define ROW2            (ROW1 + IND_HEIGHT)
+#define ROW3            (ROW2 + IND_HEIGHT)
+#define COL1            (0)
+#define COL2            (TFT_WIDTH / 2)
 
 class Txt {
     public:
@@ -27,5 +29,95 @@ class Txt {
     uint16_t h;
 };
 
+typedef enum {
+    SCR_GPS,
+    SCR_SKY,
+    SCR_INFO1,
+    SCR_MAX
+} Screens;
+
+// Indicator indexes
+typedef enum {
+   // Indexes for the GNSS screen
+    GNSS_HDOP = 0, 
+    GNSS_LAT, 
+    GNSS_LONG,
+    GNSS_SATS,
+    GNSS_SOG,
+    GNSS_COG,
+} MeterIdx;
+
+
+// screen menu buttons
+typedef enum {
+    BTN_GPS,
+    BTN_SKY,
+    BTN_INFO1,
+    BTN_MAX
+}BTN;
+
+
+// This class implements a rectangle container which has a main display for
+// eg voltage, a smaller header. It is designed to work with the lvgl library
+// on an ESP32 or similar.
+// It has a fixed size.
+class Indicator {
+   public:
+    // Constructor:
+    Indicator(lv_obj_t *parent, const char *label, uint32_t x, uint32_t y);
+    void setValue(const char *value);
+
+    // Set the value of a meter using a double and set the precision
+    void setValue(double value, const char* units, uint32_t prec);
+    
+    //Change the main indicator font
+    void setFont(const lv_font_t *value);
+
+    // private:
+    lv_obj_t *container;
+    lv_obj_t *label;
+    lv_obj_t *text;
+
+    lv_style_t text_style;
+    lv_style_t value_style;
+    lv_style_t style;
+
+    // The interval used for moving averages
+    static const int interval = 4;  
+};
+
+// Class to implement a full width info text area. 
+class InfoBar {
+    public:
+    InfoBar(lv_obj_t * parent, uint32_t y);
+    void setValue(const char * value);
+    void setTime(const char * t);
+
+    bool isActive;
+
+    lv_obj_t * container;
+    lv_obj_t * text;
+    lv_obj_t * curTime;
+};
+
+
+class MenuBar {
+    public:
+    MenuBar(lv_obj_t * parent, uint32_t y);
+
+    void addButton(const char * label, Screens target);
+    lv_obj_t *  addActionButton(const char * label, void (*ptr)(lv_event_t *));
+    lv_obj_t * container;
+};
+
+typedef struct Buttons {
+    BTN btn;
+    Screens target;
+    const char * label;
+}Buttons;
+
+
+
 void setup_display();
-void display_write(Obj obj, String str);
+void display_write(MeterIdx obj, double value, const char * units, uint32_t precision);
+void metersWork(void);

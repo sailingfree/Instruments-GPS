@@ -4,7 +4,6 @@
 #include <NMEA0183Handlers.h>
 #include <BoatData.h>
 #include <SoftwareSerial.h>
-#include <TFT_eSPI.h>
 #include <StringStream.h>
 #include <display.h>
 #include <cyd_pins.h>
@@ -115,7 +114,6 @@ bool connectWifi() {
             WiFi.disconnect();
             WiFi.mode(WIFI_OFF);
             WiFi.mode(WIFI_STA);
-            display_write(DISPWifi, String("Trying SSID ") + wifiCreds[i].ssid);
             WiFi.begin(wifiCreds[i].ssid.c_str(), wifiCreds[i].pass.c_str());
             wifi_retry = 0;
 
@@ -131,7 +129,6 @@ bool connectWifi() {
                 WifiIP = WiFi.localIP().toString();
                 SSID = wifiCreds[i].ssid;
                 Console->printf("Connected to %s\n", wifiCreds[i].ssid.c_str());
-                display_write(DISPWifi, String("Connect to ") + wifiCreds[i].ssid);
                 return true;
             }
             else {
@@ -153,20 +150,25 @@ void disconnectWifi() {
 
 void setup() {
     Serial.begin(115200);
+    delay(1000);
+
+    Serial.printf("Board: %s", BOARD_NAME);
+    Serial.printf("CPU: %s rev%d, CPU Freq: %d Mhz, %d core(s)", ESP.getChipModel(), ESP.getChipRevision(), getCpuFrequencyMhz(), ESP.getChipCores());
+    Serial.printf("Free heap: %d bytes", ESP.getFreeHeap());
+    Serial.printf("Free PSRAM: %d bytes", ESP.getPsramSize());
+    Serial.printf("SDK version: %s", ESP.getSdkVersion());
 
     GwPrefsInit();
 
-    Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
-    Wire.setClock(100000);
-    Wire.begin();
+ //   Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
+ //   Wire.setClock(100000);
+ //   Wire.begin();
 
     // scan the bus
-    scan_i2c_bus();
+  //  scan_i2c_bus();
 
     // Init the display
     setup_display();
-
-    display_write(DISPWifi, String("Initialising WiFi"));
 
     // setup the WiFI map from the preferences
     wifiCreds[0].ssid = GwGetVal(SSID1);
@@ -228,7 +230,7 @@ void setup() {
 
 
     // The bmp180 pressure sensor
-    setup_bmp180();
+ //   setup_bmp180();
 
     gpsInit();
 }
@@ -241,12 +243,12 @@ void loop() {
     handleNMEA0183();
 
     if (BoatData.changed) {
-        printFloat(BoatData.Latitude, 12, 6, Lat);
-        printFloat(BoatData.Longitude, 12, 6, Long);
-        printFloat(BoatData.SOG, 6, 2, Speed);
-        printFloat(BoatData.COG, 6, 1, Course);
-        printFloat(BoatData.HDOP, 6, 2, Hdop);
-        printInt(BoatData.SatelliteCount, 6, Sats);
+    //    printFloat(BoatData.Latitude, 12, 6, Lat);
+    //    printFloat(BoatData.Longitude, 12, 6, Long);
+    //    printFloat(BoatData.SOG, 6, 2, Speed);
+     ///   printFloat(BoatData.COG, 6, 1, Course);
+     //   printFloat(BoatData.HDOP, 6, 2, Hdop);
+     //   printInt(BoatData.SatelliteCount, 6, Sats);
 
         time_t gpstime = BoatData.GPSTime + (BoatData.DaysSince1970 * 24 * 60 * 60);
 
@@ -256,22 +258,24 @@ void loop() {
 
 
         String space(" ");
-        display_write(DISPWifi, SSID + space + UnitIP.toString());
-        display_write(DISPDateTime, Time.data);
-        display_write(DISPPosition, Lat.data + space + Long.data);
-        display_write(DISPHDOP, String("HDOP ") + Hdop.data);
-        display_write(DISPSats, String("Satellites ") + Sats.data);
-        display_write(DISPSpeed, String("Speed ") + Speed.data + String(" Kts"));
-        display_write(DISPCourse, String("Course ") + Course.data + String(" "));
+        display_write(GNSS_HDOP, BoatData.HDOP, "", 2);
+        display_write(GNSS_LAT, BoatData.Latitude, "", 6);
+        display_write(GNSS_LONG, BoatData.Longitude, "", 2);
+        display_write(GNSS_SATS, BoatData.SatelliteCount, "", 0);
+        display_write(GNSS_SOG, BoatData.SOG, "", 1);
+        display_write(GNSS_COG, BoatData.COG, "", 0);
         BoatData.changed = false;
     }
 
     // Read the sensors
-    handleSensors();
+ //   handleSensors();
 
     // handle the telnet session
     handleTelnet();
 
     // Run any shell commands
     handleShell();
+
+    // Update the display
+    metersWork();
 }

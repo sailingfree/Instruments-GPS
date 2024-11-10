@@ -1,6 +1,6 @@
 ﻿/**
  * @file lv_conf.h
- * Configuration file for v9.2.2
+ * Configuration file for v9.2.0
  */
 
 /*
@@ -41,6 +41,7 @@
  * - LV_STDLIB_CUSTOM:      Implement the functions externally
  */
 #define LV_USE_STDLIB_MALLOC    LV_STDLIB_BUILTIN
+//#define LV_USE_STDLIB_MALLOC    LV_STDLIB_CUSTOM
 #define LV_USE_STDLIB_STRING    LV_STDLIB_BUILTIN
 #define LV_USE_STDLIB_SPRINTF   LV_STDLIB_BUILTIN
 
@@ -53,10 +54,10 @@
 
 #if LV_USE_STDLIB_MALLOC == LV_STDLIB_BUILTIN
     /*Size of the memory available for `lv_malloc()` in bytes (>= 2kB)*/
-    #define LV_MEM_SIZE (64 * 1024U)          /*[bytes]*/
+    #define LV_MEM_SIZE (64 * 1024U)          /*[bytes]*/  // WAS 64
 
     /*Size of the memory expand for `lv_malloc()` in bytes*/
-    #define LV_MEM_POOL_EXPAND_SIZE 0
+    #define LV_MEM_POOL_EXPAND_SIZE (0)
 
     /*Set an address for the memory pool instead of allocating it as a normal array. Can be in external SRAM too.*/
     #define LV_MEM_ADR 0     /*0: unused*/
@@ -66,7 +67,8 @@
         #undef LV_MEM_POOL_ALLOC
     #endif
 #endif  /*LV_USE_STDLIB_MALLOC == LV_STDLIB_BUILTIN*/
-
+#define LV_MEM_POOL_ALLOC(size)  heap_caps_malloc(size, MALLOC_CAP_SPIRAM)
+#define LV_MEM_POOL_INCLUDE <esp_heap_caps.h>
 /*====================
    HAL SETTINGS
  *====================*/
@@ -95,14 +97,6 @@
 #if LV_USE_OS == LV_OS_CUSTOM
     #define LV_OS_CUSTOM_INCLUDE <stdint.h>
 #endif
-#if LV_USE_OS == LV_OS_FREERTOS
-	/*
-	 * Unblocking an RTOS task with a direct notification is 45% faster and uses less RAM
-	 * than unblocking a task using an intermediary object such as a binary semaphore.
-	 * RTOS task notifications can only be used when there is only one task that can be the recipient of the event.
-	 */
-	#define LV_USE_FREERTOS_TASK_NOTIFY 1
-#endif
 
 /*========================
  * RENDERING CONFIGURATION
@@ -126,7 +120,7 @@
  * and can't be drawn in chunks. */
 
 /*The target buffer size for simple layer chunks.*/
-#define LV_DRAW_LAYER_SIMPLE_BUF_SIZE    (24 * 1024)   /*[bytes]*/
+#define LV_DRAW_LAYER_SIMPLE_BUF_SIZE    (48 * 1024)   /*[bytes]*/
 
 /* The stack size of the drawing thread.
  * NOTE: If FreeType or ThorVG is enabled, it is recommended to set it to 32KB or more.
@@ -213,16 +207,10 @@
 #endif
 
 /* Use NXP's PXP on iMX RTxxx platforms. */
-#define LV_USE_PXP 0
+#define LV_USE_DRAW_PXP 0
 
-#if LV_USE_PXP
-    /* Use PXP for drawing.*/
-    #define LV_USE_DRAW_PXP 1
-
-    /* Use PXP to rotate display.*/
-    #define LV_USE_ROTATE_PXP 0
-
-    #if LV_USE_DRAW_PXP && LV_USE_OS
+#if LV_USE_DRAW_PXP
+    #if LV_USE_OS
         /* Use additional draw thread for PXP processing.*/
         #define LV_USE_PXP_DRAW_THREAD 1
     #endif
@@ -275,7 +263,7 @@
  *-----------*/
 
 /*Enable the log module*/
-#define LV_USE_LOG 0
+#define LV_USE_LOG 1
 #if LV_USE_LOG
 
     /*How important log should be added:
@@ -285,11 +273,12 @@
     *LV_LOG_LEVEL_ERROR       Only critical issue, when the system may fail
     *LV_LOG_LEVEL_USER        Only logs added by the user
     *LV_LOG_LEVEL_NONE        Do not log anything*/
-    #define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
+    #define LV_LOG_LEVEL LV_LOG_LEVEL_TRACE
 
     /*1: Print the log with 'printf';
     *0: User need to register a callback with `lv_log_register_print_cb()`*/
-    #define LV_LOG_PRINTF 0
+    #define LV_LOG_PRINTF 1
+
 
     /*Set callback to print the logs.
      *E.g `my_print`. The prototype should be `void my_print(lv_log_level_t level, const char * buf)`
@@ -306,15 +295,15 @@
 
 
     /*Enable/disable LV_LOG_TRACE in modules that produces a huge number of logs*/
-    #define LV_LOG_TRACE_MEM        1
-    #define LV_LOG_TRACE_TIMER      1
-    #define LV_LOG_TRACE_INDEV      1
-    #define LV_LOG_TRACE_DISP_REFR  1
-    #define LV_LOG_TRACE_EVENT      1
+    #define LV_LOG_TRACE_MEM        0
+    #define LV_LOG_TRACE_TIMER      0
+    #define LV_LOG_TRACE_INDEV      0
+    #define LV_LOG_TRACE_DISP_REFR  0
+    #define LV_LOG_TRACE_EVENT      0
     #define LV_LOG_TRACE_OBJ_CREATE 1
-    #define LV_LOG_TRACE_LAYOUT     1
-    #define LV_LOG_TRACE_ANIM       1
-    #define LV_LOG_TRACE_CACHE      1
+    #define LV_LOG_TRACE_LAYOUT     0
+    #define LV_LOG_TRACE_ANIM       0
+    #define LV_LOG_TRACE_CACHE      0
 
 #endif  /*LV_USE_LOG*/
 
@@ -483,13 +472,13 @@
  *https://fonts.google.com/specimen/Montserrat*/
 #define LV_FONT_MONTSERRAT_8  0
 #define LV_FONT_MONTSERRAT_10 0
-#define LV_FONT_MONTSERRAT_12 0
+//#define LV_FONT_MONTSERRAT_12 0
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 0
 #define LV_FONT_MONTSERRAT_18 0
 #define LV_FONT_MONTSERRAT_20 0
 #define LV_FONT_MONTSERRAT_22 0
-#define LV_FONT_MONTSERRAT_24 0
+#define LV_FONT_MONTSERRAT_24 1
 #define LV_FONT_MONTSERRAT_26 0
 #define LV_FONT_MONTSERRAT_28 0
 #define LV_FONT_MONTSERRAT_30 0
@@ -501,7 +490,7 @@
 #define LV_FONT_MONTSERRAT_42 0
 #define LV_FONT_MONTSERRAT_44 0
 #define LV_FONT_MONTSERRAT_46 0
-#define LV_FONT_MONTSERRAT_48 0
+//#define LV_FONT_MONTSERRAT_48 0
 
 /*Demonstrate special features*/
 #define LV_FONT_MONTSERRAT_28_COMPRESSED 0  /*bpp = 3*/
