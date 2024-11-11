@@ -141,12 +141,12 @@ void setup() {
 
     GwPrefsInit();
 
- //   Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
- //   Wire.setClock(100000);
- //   Wire.begin();
+    Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
+    Wire.setClock(100000);
+    Wire.begin();
 
     // scan the bus
-  //  scan_i2c_bus();
+    scan_i2c_bus();
 
     // Init the display
     setup_display();
@@ -211,7 +211,7 @@ void setup() {
 
 
     // The bmp180 pressure sensor
- //   setup_bmp180();
+    setup_bmp180();
 
     gpsInit();
 }
@@ -246,7 +246,7 @@ void loop() {
     }
 
     // Read the sensors
- //   handleSensors();
+    handleSensors();
 
     // handle the telnet session
     handleTelnet();
