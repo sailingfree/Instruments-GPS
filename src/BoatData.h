@@ -1,5 +1,5 @@
-#ifndef _BoatData_H_
-#define _BoatData_H_
+#pragma once
+#include <Arduino.h>
 
 struct tBoatData {
     bool changed;                   // Changed since last time we read the data
@@ -55,5 +55,3 @@ public:
             countFail = 0;
     };
 };
-
-#endif // _BoatData_H_

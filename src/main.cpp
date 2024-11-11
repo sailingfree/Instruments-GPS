@@ -1,7 +1,3 @@
-//#include <TinyGPSPlus.h>
-#include <NMEA0183.h>
-#include <NMEA0183Msg.h>
-#include <NMEA0183Handlers.h>
 #include <BoatData.h>
 #include <SoftwareSerial.h>
 #include <StringStream.h>
@@ -54,8 +50,6 @@ const size_t MaxClients = 10;
 // this can get changed later, eg in the gwshell.
 Stream* Console = &Serial;
 
-// Define the network servers
-
 // The telnet server for the shell.
 WiFiServer telnetServer(23);
 
@@ -74,10 +68,6 @@ String WifiIP = "Unknown";
 
 
 #define WLAN_CLIENT 1  // Set to 1 to enable client network. 0 to act as AP only
-#define USE_MDNS true
-
-// The string stream object for building text
-StringStream output;
 
 // Function to convert lat/lon in decimal degrees to DMM
 // Returns a reference to a static char string
@@ -90,29 +80,6 @@ const char * decimalDegDMM(double angle) {
     mm = fabs(fractional * 60.0);
     snprintf(buf, len - 1, "%.0lf°%.3f\'", deg, mm);
     return buf;
-}
-
-
-static void printFloat(float val, int len, int prec, StringStream& target) {
-    if (val == NMEA0183DoubleNA) {
-        target.print("---");
-    }
-    else {
-        target.print(val, prec);
-        int vi = abs((int)val);
-        int flen = prec + (val < 0.0 ? 2 : 1);  // . and -
-        flen += vi >= 1000 ? 4 : vi >= 100 ? 3
-            : vi >= 10 ? 2
-            : 1;
-        for (int i = flen; i < len; ++i)
-            target.print(' ');
-    }
-}
-
-static void printInt(unsigned long val, int len, StringStream& target) {
-    StringStream local;
-
-    target.printf("%d", val);
 }
 
 // Connect to a wifi AP
@@ -251,19 +218,12 @@ void setup() {
 
 
 void loop() {
-    StringStream Lat, Long, Time, Speed, Course, Dist, MaxSp, AvgSp, Hdop, Sats;
+    StringStream Time;
 
     // read any NMEA0183 messages, decode them and update the BoatData object
     handleNMEA0183();
 
     if (BoatData.changed) {
-    //    printFloat(BoatData.Latitude, 12, 6, Lat);
-    //    printFloat(BoatData.Longitude, 12, 6, Long);
-    //    printFloat(BoatData.SOG, 6, 2, Speed);
-     ///   printFloat(BoatData.COG, 6, 1, Course);
-     //   printFloat(BoatData.HDOP, 6, 2, Hdop);
-     //   printInt(BoatData.SatelliteCount, 6, Sats);
-
         time_t gpstime = BoatData.GPSTime + (BoatData.DaysSince1970 * 24 * 60 * 60);
 
         struct tm* tm;
