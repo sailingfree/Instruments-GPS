@@ -79,6 +79,20 @@ String WifiIP = "Unknown";
 // The string stream object for building text
 StringStream output;
 
+// Function to convert lat/lon in decimal degrees to DMM
+// Returns a reference to a static char string
+const char * decimalDegDMM(double angle) {
+    static const int len = 32;
+    static char buf[len];
+    double deg, fractional, mm;
+
+    fractional = modf(angle, &deg);
+    mm = fabs(fractional * 60.0);
+    snprintf(buf, len - 1, "%.0lf°%.3f\'", deg, mm);
+    return buf;
+}
+
+
 static void printFloat(float val, int len, int prec, StringStream& target) {
     if (val == NMEA0183DoubleNA) {
         target.print("---");
@@ -259,8 +273,10 @@ void loop() {
 
         String space(" ");
         display_write(GNSS_HDOP, BoatData.HDOP, "", 2);
-        display_write(GNSS_LAT, BoatData.Latitude, "", 6);
-        display_write(GNSS_LONG, BoatData.Longitude, "", 6);
+        const char * strLatitude = decimalDegDMM(BoatData.Latitude);
+        display_write(GNSS_LAT, strLatitude);
+        const char * strLongitude = decimalDegDMM(BoatData.Longitude);
+        display_write(GNSS_LONG, strLongitude);
         display_write(GNSS_SATS, BoatData.SatelliteCount, "", 0);
         display_write(GNSS_SOG, BoatData.SOG, "", 1);
         display_write(GNSS_COG, BoatData.COG, "", 0);    

@@ -123,6 +123,7 @@ typedef struct Buttons {
 
 void setup_display();
 void display_write(MeterIdx obj, double value, const char * units, uint32_t precision);
+void display_write(MeterIdx obj, const char * value);
 void updateTime(StringStream t);
 void metersWork(void);
 void setGNSSSky(uint32_t idx, double azimuth, double declination);

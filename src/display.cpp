@@ -358,8 +358,14 @@ void setup_display() {
     lv_scr_load(screens[SCR_GPS]);
 }
 
+// Update a value using double and optional units
 void display_write(MeterIdx obj, double value, const char* units, uint32_t prec) {
     ind[SCR_GPS][obj]->setValue(value, units, prec);
+}
+
+// Update using a pre-formatted char *
+void display_write(MeterIdx obj, const char * value) {
+    ind[SCR_GPS][obj]->setValue(value);
 }
 
 // Upadte the time on the screen
