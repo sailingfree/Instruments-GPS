@@ -125,3 +125,5 @@ void setup_display();
 void display_write(MeterIdx obj, double value, const char * units, uint32_t precision);
 void updateTime(StringStream t);
 void metersWork(void);
+void setGNSSSky(uint32_t idx, double azimuth, double declination);
+void updateGnss();

@@ -104,13 +104,13 @@ void getSysInfo(Stream& s) {
 void getSatellites(Stream& s) {
     uint32_t totalFound = 0;
 
-    std::map<int, tGSV>::iterator it = Satellites.begin();
-    // the map may have changed so go through it again
-    it = Satellites.begin();
+
     s.println("=========== GPS Satellites==========");
     s.printf("HDOP %f\n", BoatData.HDOP);
 
+
     s.printf("SVID\tAZ\tELEV\tSNR\n");
+    std::map<int, tGSV>::iterator it = Satellites.begin();
     while (it != Satellites.end()) {
         tGSV sat = it->second;
         if (sat.Azimuth != NMEA0183DoubleNA && sat.Elevation != NMEA0183DoubleNA && sat.SNR != NMEA0183DoubleNA) {

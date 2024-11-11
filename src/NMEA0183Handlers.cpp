@@ -25,8 +25,8 @@ Author: Timo Lappalainen
 std::map<int, tGSV> Satellites;
 
 struct tNMEA0183Handler {
-  const char* Code;
-  void (*Handler)(const tNMEA0183Msg& NMEA0183Msg);
+    const char* Code;
+    void (*Handler)(const tNMEA0183Msg& NMEA0183Msg);
 };
 
 // Predefinition for functions to make it possible for constant definition for NMEA0183Handlers
@@ -42,180 +42,190 @@ tBoatData* pBD = 0;
 Stream* NMEA0183HandlersDebugStream = NULL;
 
 tNMEA0183Handler NMEA0183Handlers[] = {
-  {"GGA",&HandleGGA},
-  {"VTG",&HandleVTG},
-  {"RMC",&HandleRMC},
-  {"GSA",&HandleGSA},
-  {"GSV",&HandleGSV},
-  {"GLL",&HandleGLL},
-  {0,0}
-};
+    {"GGA", &HandleGGA},
+    {"VTG", &HandleVTG},
+    {"RMC", &HandleRMC},
+    {"GSA", &HandleGSA},
+    {"GSV", &HandleGSV},
+    {"GLL", &HandleGLL},
+    {0, 0}};
 
 void InitNMEA0183Handlers(tBoatData* _BoatData) {
-  pBD = _BoatData;
+    pBD = _BoatData;
 }
 
 void DebugNMEA0183Handlers(Stream* _stream) {
-  NMEA0183HandlersDebugStream = _stream;
+    NMEA0183HandlersDebugStream = _stream;
 }
 
 tN2kGNSSmethod GNSMethofNMEA0183ToN2k(int Method) {
-  switch (Method) {
-  case 0: return N2kGNSSm_noGNSS;
-  case 1: return N2kGNSSm_GNSSfix;
-  case 2: return N2kGNSSm_DGNSS;
-  default: return N2kGNSSm_noGNSS;
-  }
+    switch (Method) {
+        case 0:
+            return N2kGNSSm_noGNSS;
+        case 1:
+            return N2kGNSSm_GNSSfix;
+        case 2:
+            return N2kGNSSm_DGNSS;
+        default:
+            return N2kGNSSm_noGNSS;
+    }
 }
 
 void HandleNMEA0183Msg(const tNMEA0183Msg& NMEA0183Msg) {
-  int iHandler;
-  // Find handler
-  for (iHandler = 0; NMEA0183Handlers[iHandler].Code != 0 && !NMEA0183Msg.IsMessageCode(NMEA0183Handlers[iHandler].Code); iHandler++);
-  if (NMEA0183Handlers[iHandler].Code != 0) {
-    NMEA0183Handlers[iHandler].Handler(NMEA0183Msg);
-  }
-  else {
-    Serial.printf("No handler for message %s\n", NMEA0183Msg.MessageCode());
-  }
+    int iHandler;
+    // Find handler
+    for (iHandler = 0; NMEA0183Handlers[iHandler].Code != 0 && !NMEA0183Msg.IsMessageCode(NMEA0183Handlers[iHandler].Code); iHandler++);
+    if (NMEA0183Handlers[iHandler].Code != 0) {
+        NMEA0183Handlers[iHandler].Handler(NMEA0183Msg);
+    } else {
+        Serial.printf("No handler for message %s\n", NMEA0183Msg.MessageCode());
+    }
 }
 
 // NMEA0183 message Handler functions
 
 // Position, velocity, and time
 void HandleRMC(const tNMEA0183Msg& NMEA0183Msg) {
-  if (pBD == 0) return;
+    if (pBD == 0) return;
 
-  if (NMEA0183ParseRMC_nc(NMEA0183Msg, pBD->GPSTime, pBD->Latitude, pBD->Longitude, pBD->COG, pBD->SOG, pBD->DaysSince1970, pBD->Variation)) {
-    pBD->changed = true;
-    pBD->countRMC++;
+    if (NMEA0183ParseRMC_nc(NMEA0183Msg, pBD->GPSTime, pBD->Latitude, pBD->Longitude, pBD->COG, pBD->SOG, pBD->DaysSince1970, pBD->Variation)) {
+        pBD->changed = true;
+        pBD->countRMC++;
 
-    tN2kMsg N2kMsg;
-    SetN2kCOGSOGRapid(N2kMsg, 1, N2khr_true, pBD->COG, pBD->SOG);
-    GwSendYD(N2kMsg);
-  }
-  else if (NMEA0183HandlersDebugStream != 0) {
-    pBD->countFail++;
-    NMEA0183HandlersDebugStream->println("Failed to parse RMC");
-  }
+        tN2kMsg N2kMsg;
+        SetN2kCOGSOGRapid(N2kMsg, 1, N2khr_true, pBD->COG, pBD->SOG);
+        GwSendYD(N2kMsg);
+    } else if (NMEA0183HandlersDebugStream != 0) {
+        pBD->countFail++;
+        NMEA0183HandlersDebugStream->println("Failed to parse RMC");
+    }
 }
 
 // Time, position, and fix related data
 void HandleGGA(const tNMEA0183Msg& NMEA0183Msg) {
-  if (pBD == 0) return;
+    if (pBD == 0) return;
 
-  if (NMEA0183ParseGGA_nc(NMEA0183Msg, pBD->GPSTime, pBD->Latitude, pBD->Longitude,
-    pBD->GPSQualityIndicator, pBD->SatelliteCount, pBD->HDOP, pBD->Altitude, pBD->GeoidalSeparation,
-    pBD->DGPSAge, pBD->DGPSReferenceStationID)) {
+    if (NMEA0183ParseGGA_nc(NMEA0183Msg, pBD->GPSTime, pBD->Latitude, pBD->Longitude,
+                            pBD->GPSQualityIndicator, pBD->SatelliteCount, pBD->HDOP, pBD->Altitude, pBD->GeoidalSeparation,
+                            pBD->DGPSAge, pBD->DGPSReferenceStationID)) {
+        tN2kMsg N2kMsg;
+        pBD->changed = true;
+        pBD->countGGA++;
+        SetN2kGNSS(N2kMsg, 1, pBD->DaysSince1970, pBD->GPSTime, pBD->Latitude, pBD->Longitude, pBD->Altitude,
+                   N2kGNSSt_GPS, GNSMethofNMEA0183ToN2k(pBD->GPSQualityIndicator), pBD->SatelliteCount, pBD->HDOP, 0,
+                   pBD->GeoidalSeparation, 1, N2kGNSSt_GPS, pBD->DGPSReferenceStationID, pBD->DGPSAge);
+        GwSendYD(N2kMsg);
 
-    tN2kMsg N2kMsg;
-    pBD->changed = true;
-    pBD->countGGA++;
-    SetN2kGNSS(N2kMsg, 1, pBD->DaysSince1970, pBD->GPSTime, pBD->Latitude, pBD->Longitude, pBD->Altitude,
-      N2kGNSSt_GPS, GNSMethofNMEA0183ToN2k(pBD->GPSQualityIndicator), pBD->SatelliteCount, pBD->HDOP, 0,
-      pBD->GeoidalSeparation, 1, N2kGNSSt_GPS, pBD->DGPSReferenceStationID, pBD->DGPSAge
-    );
-    GwSendYD(N2kMsg);
-
-
-    if (NMEA0183HandlersDebugStream != 0) {
-      NMEA0183HandlersDebugStream->print("Time="); NMEA0183HandlersDebugStream->println(pBD->GPSTime);
-      NMEA0183HandlersDebugStream->print("Latitude="); NMEA0183HandlersDebugStream->println(pBD->Latitude, 5);
-      NMEA0183HandlersDebugStream->print("Longitude="); NMEA0183HandlersDebugStream->println(pBD->Longitude, 5);
-      NMEA0183HandlersDebugStream->print("Altitude="); NMEA0183HandlersDebugStream->println(pBD->Altitude, 1);
-      NMEA0183HandlersDebugStream->print("GPSQualityIndicator="); NMEA0183HandlersDebugStream->println(pBD->GPSQualityIndicator);
-      NMEA0183HandlersDebugStream->print("SatelliteCount="); NMEA0183HandlersDebugStream->println(pBD->SatelliteCount);
-      NMEA0183HandlersDebugStream->print("HDOP="); NMEA0183HandlersDebugStream->println(pBD->HDOP);
+        if (NMEA0183HandlersDebugStream != 0) {
+            NMEA0183HandlersDebugStream->print("Time=");
+            NMEA0183HandlersDebugStream->println(pBD->GPSTime);
+            NMEA0183HandlersDebugStream->print("Latitude=");
+            NMEA0183HandlersDebugStream->println(pBD->Latitude, 5);
+            NMEA0183HandlersDebugStream->print("Longitude=");
+            NMEA0183HandlersDebugStream->println(pBD->Longitude, 5);
+            NMEA0183HandlersDebugStream->print("Altitude=");
+            NMEA0183HandlersDebugStream->println(pBD->Altitude, 1);
+            NMEA0183HandlersDebugStream->print("GPSQualityIndicator=");
+            NMEA0183HandlersDebugStream->println(pBD->GPSQualityIndicator);
+            NMEA0183HandlersDebugStream->print("SatelliteCount=");
+            NMEA0183HandlersDebugStream->println(pBD->SatelliteCount);
+            NMEA0183HandlersDebugStream->print("HDOP=");
+            NMEA0183HandlersDebugStream->println(pBD->HDOP);
+        }
+    } else {
+        pBD->countFail++;
+        if (NMEA0183HandlersDebugStream != 0) {
+            NMEA0183HandlersDebugStream->println("Failed to parse GGA");
+        }
     }
-  }
-  else {
-    pBD->countFail++;
-    if (NMEA0183HandlersDebugStream != 0) {
-      NMEA0183HandlersDebugStream->println("Failed to parse GGA");
-    }
-  }
 }
 
 #define PI_2 6.283185307179586476925286766559
 
 // Track made good and speed over ground
 void HandleVTG(const tNMEA0183Msg& NMEA0183Msg) {
+    double MagneticCOG;
 
-  double MagneticCOG;
+    if (pBD == 0) return;
+    pBD->countVTG++;
+    return;  // Disabled for now as I'm not sure this gives useful results at least in the lab when stationary
 
-  if (pBD == 0) return;
-  pBD->countVTG++;
-  return;  // Disabled for now as I'm not sure this gives useful results at least in the lab when stationary
+    if (NMEA0183ParseVTG_nc(NMEA0183Msg, pBD->COG, MagneticCOG, pBD->SOG)) {
+        pBD->Variation = pBD->COG - MagneticCOG;  // Save variation for Magnetic heading
 
-  if (NMEA0183ParseVTG_nc(NMEA0183Msg, pBD->COG, MagneticCOG, pBD->SOG)) {
-    pBD->Variation = pBD->COG - MagneticCOG; // Save variation for Magnetic heading
+        tN2kMsg N2kMsg;
+        pBD->changed = true;
 
-    tN2kMsg N2kMsg;
-    pBD->changed = true;
+        SetN2kCOGSOGRapid(N2kMsg, 1, N2khr_true, pBD->COG, pBD->SOG);
+        GwSendYD(N2kMsg);
 
-    SetN2kCOGSOGRapid(N2kMsg, 1, N2khr_true, pBD->COG, pBD->SOG);
-    GwSendYD(N2kMsg);
-
-    if (NMEA0183HandlersDebugStream != 0) {
-      NMEA0183HandlersDebugStream->print("True heading="); NMEA0183HandlersDebugStream->println(pBD->TrueHeading);
+        if (NMEA0183HandlersDebugStream != 0) {
+            NMEA0183HandlersDebugStream->print("True heading=");
+            NMEA0183HandlersDebugStream->println(pBD->TrueHeading);
+        }
+    } else {
+        pBD->countFail++;
+        if (NMEA0183HandlersDebugStream != 0) {
+            NMEA0183HandlersDebugStream->println("Failed to parse VTG");
+        }
     }
-  }
-  else {
-    pBD->countFail++;
-    if (NMEA0183HandlersDebugStream != 0) {
-      NMEA0183HandlersDebugStream->println("Failed to parse VTG");
-    }
-  }
 }
 
 // GPS DOP and active satellites
 void HandleGSA(const tNMEA0183Msg& NMEA0183Msg) {
-  if (pBD == 0) return;
-  pBD->countGSA++;
+    if (pBD == 0) return;
+    pBD->countGSA++;
+}
+
+// Helper
+bool isGSVValid(struct tGSV & msg)
+{
+  return msg.SVID > 0 && msg.Elevation > 0.0 && msg.Azimuth > 0.0 && msg.SNR > 0.0;
 }
 
 // Satellite information in view
 void HandleGSV(const tNMEA0183Msg& NMEA0183Msg) {
-  if (pBD == 0) return;
-  int totalMsg;
-  int thisMsg;
-  int satCount;
-  struct tGSV msg1, msg2, msg3, msg4;
+    if (pBD == 0) return;
+    int totalMsg;
+    int thisMsg;
+    int satCount;
+    struct tGSV msg1, msg2, msg3, msg4;
 
-  if (NMEA0183ParseGSV(NMEA0183Msg, totalMsg, thisMsg, satCount,
-    msg1, msg2, msg3, msg4)) {
+    if (NMEA0183ParseGSV(NMEA0183Msg, totalMsg, thisMsg, satCount,
+                         msg1, msg2, msg3, msg4)) {
+        if (thisMsg == 1) {
+            Satellites.clear();  // Start from scratch in case they have changed since last cycle
+        }
 
-    if (thisMsg == 1) {
-      Satellites.clear();     // Start from scratch in case they have changed since last cycle   
+        pBD->countGSV++;
+        if (isGSVValid(msg1)) {
+            Satellites[msg1.SVID] = msg1;
+        }
+        if (isGSVValid(msg2)) {
+            Satellites[msg2.SVID] = msg2;
+        }
+        if (isGSVValid(msg3)) {
+            Satellites[msg3.SVID] = msg3;
+        }
+        if (isGSVValid(msg4)) {
+            Satellites[msg4.SVID] = msg4;
+        }
+
+        //      Serial.printf("GSV total %d this %d sats %d 1.SNR %f 2.SNR %f 3. SNR %f 4.SNR %f\n",
+        //        totalMsg, thisMsg, satCount, msg1.SNR, msg2.SNR, msg3.SNR, msg4.SNR);
+
+    } else {
+        pBD->countFail++;
     }
-
-    pBD->countGSV++;
-
-
-    Satellites[msg1.SVID] = msg1;
-    Satellites[msg2.SVID] = msg2;
-    Satellites[msg3.SVID] = msg3;
-    Satellites[msg4.SVID] = msg4;
-    
-
-
-
-  //    Serial.printf("GSV total %d this %d sats %d 1.SNR %f 2.SNR %f 3. SNR %f 4.SNR %f\n",
-  //      totalMsg, thisMsg, satCount, msg1.SNR, msg2.SNR, msg3.SNR, msg4.SNR);
-
-  }
-  else {
-    pBD->countFail++;
-  }
 }
 
 // Position data: position fix, time of position fix, and status
 void HandleGLL(const tNMEA0183Msg& NMEA0183Msg) {
-  if (pBD == 0) return;
-  char buf[200];
-  pBD->countGLL++;
-  NMEA0183Msg.GetMessage(buf, 199);
-  if (NMEA0183HandlersDebugStream != 0) {
-    Serial.printf("%s\n", buf);
-  }
+    if (pBD == 0) return;
+    char buf[200];
+    pBD->countGLL++;
+    NMEA0183Msg.GetMessage(buf, 199);
+    if (NMEA0183HandlersDebugStream != 0) {
+        Serial.printf("%s\n", buf);
+    }
 }
