@@ -34,8 +34,6 @@ static SatData satData[MAXSATS];
 lv_obj_t* screens[SCR_MAX];
 static Indicator* ind[SCR_MAX][12];
 static InfoBar* bars[SCR_MAX];
-// define text areas
-static lv_obj_t* textAreas[SCR_MAX];
 
 // Constructor. Binds to the parent object.
 Indicator::Indicator(lv_obj_t* parent, const char* name, uint32_t x, uint32_t y) {
@@ -93,7 +91,7 @@ InfoBar::InfoBar(lv_obj_t* parent, uint32_t y) {
 
     container = lv_obj_create(parent);
     lv_obj_set_pos(container, 0, y);
-    lv_obj_set_width(container, (BAR_WIDTH) - (2 * padding));
+    lv_obj_set_width(container, (BAR_WIDTH)-(2 * padding));
     lv_obj_set_height(container, (BAR_HEIGHT)-2 * padding);
     lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -252,7 +250,6 @@ void InfoBar::setTime(const char* t) {
 }
 
 static void setupCommonstyles(lv_obj_t* obj) {
-    static lv_style_t style;
     lv_obj_set_style_pad_gap(obj, padding, 0);
 
     lv_obj_set_height(obj, BODY_HEIGHT);
@@ -299,23 +296,52 @@ lv_obj_t* createSkyScreen() {
     setupCommonstyles(screen);
     setupHeader(SCR_SKY, screen, "GPS Sky");
 
+    // Main body for the chart and sky viwe
+    static lv_style_t style;
+    lv_style_init(&style);
+
+    lv_style_set_bg_opa(&style, LV_OPA_100);
+    lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_GREEN));
+    lv_style_set_pad_all(&style, 0);
+    lv_obj_t * body = lv_obj_create(screen);
+//    lv_obj_set_style_pad_gap(body, padding, 0);
+    lv_obj_set_pos(body, 0, BAR_HEIGHT);
+    lv_obj_set_width(body, TFT_WIDTH);
+    lv_obj_set_height(body, BODY_HEIGHT);
+    lv_obj_remove_flag(body, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_style(body, &style, 0);
+
+    // Grid for the chart and sky
+    static int32_t cols[] = {TFT_WIDTH / 2, TFT_WIDTH / 2, LV_GRID_TEMPLATE_LAST};
+    static int32_t rows[] = {BODY_HEIGHT, BODY_HEIGHT, LV_GRID_TEMPLATE_LAST};
+
+    lv_obj_set_style_grid_column_dsc_array(body, cols, 0);
+    lv_obj_set_style_grid_row_dsc_array(body, rows, 0);
+    lv_obj_set_layout(body, LV_LAYOUT_GRID);
+
     // Create a sky view. An image forms the background rings
     LV_IMG_DECLARE(sky);
-    skyView = lv_image_create(screen);
+    skyView = lv_image_create(body);
+    lv_obj_set_style_pad_gap(skyView, padding, 0);
+    lv_obj_set_style_border_width(skyView, 0, 0);
     lv_img_set_src(skyView, &sky);
-    lv_obj_set_pos(skyView, 0, BAR_HEIGHT);
+    lv_obj_set_grid_cell(skyView, LV_GRID_ALIGN_START, 0, 1, LV_GRID_ALIGN_START, 0, 1);
     lv_obj_set_width(skyView, TFT_WIDTH / 2);
     lv_obj_set_height(skyView, BODY_HEIGHT);
 
+ 
     // Chart for the signal strength
-    GNSSChart = lv_chart_create(screen);
-    lv_obj_set_pos(GNSSChart, TFT_WIDTH / 2, BAR_HEIGHT);
+    GNSSChart = lv_chart_create(body);
+    lv_obj_set_style_pad_gap(GNSSChart, padding, 0);
+    lv_obj_set_style_border_width(GNSSChart, 0, 0);
+    lv_obj_set_grid_cell(GNSSChart, LV_GRID_ALIGN_START, 1, 1, LV_GRID_ALIGN_START, 0, 1);
     lv_obj_set_width(GNSSChart, TFT_WIDTH / 2);
     lv_obj_set_height(GNSSChart, BODY_HEIGHT);
 
     lv_chart_set_type(GNSSChart, LV_CHART_TYPE_BAR);
     lv_chart_set_range(GNSSChart, LV_CHART_AXIS_PRIMARY_Y, MIN_SNR, MAX_SNR);  // Typical min and max SNR
-                                                                               //    lv_chart_set_range(GNSSChart, LV_CHART_AXIS_PRIMARY_X, 1, MAXSATS);
+    lv_chart_set_div_line_count(GNSSChart, 0, 5);
+    lv_chart_set_range(GNSSChart, LV_CHART_AXIS_PRIMARY_X, 1, MAXSATS);
 
     GNSSChartSeries = lv_chart_add_series(GNSSChart, lv_palette_lighten(LV_PALETTE_GREEN, 2), LV_CHART_AXIS_PRIMARY_Y);
     lv_chart_set_point_count(GNSSChart, MAXSATS);
@@ -342,7 +368,7 @@ void setup_display() {
 
     lv_disp_t* dispp = lv_disp_get_default();
     theme = lv_theme_default_init(dispp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
-                                  false, &RobotoCondensedVariableFont_wght24);
+        false, &RobotoCondensedVariableFont_wght24);
 
     // theme = lv_theme_mono_init(dispp, false, &lv_font_montserrat_24);
     theme = lv_theme_mono_init(dispp, false, &RobotoCondensedVariableFont_wght32);
@@ -364,7 +390,7 @@ void display_write(MeterIdx obj, double value, const char* units, uint32_t prec)
 }
 
 // Update using a pre-formatted char *
-void display_write(MeterIdx obj, const char * value) {
+void display_write(MeterIdx obj, const char* value) {
     ind[SCR_GPS][obj]->setValue(value);
 }
 
@@ -391,7 +417,7 @@ void setGNSSSignal(uint32_t idx, uint32_t val) {
     lv_chart_set_value_by_id(GNSSChart, GNSSChartSeries, idx, val);
 }
 
-// set one of the indicators in the sjky view
+// set one of the indicators in the sky view
 void setGNSSSky(uint32_t idx, double azimuth, double declination) {
     if (idx < 0 || idx > MAXSATS)
         return;  // Ignore bad index
@@ -403,22 +429,34 @@ void setGNSSSky(uint32_t idx, double azimuth, double declination) {
     if (!satData[idx].dot) {
         // First time for this index so create the image object
         LV_IMG_DECLARE(green_dot);
-        satData[idx].dot = lv_img_create(skyView);
-        lv_img_set_src(satData[idx].dot, &green_dot);
+        satData[idx].dot = lv_image_create(skyView);
+        lv_image_set_src(satData[idx].dot, &green_dot);
     }
     uint32_t dotw, doth;
-    dotw = lv_obj_get_width(satData[idx].dot);
-    doth = lv_obj_get_height(satData[idx].dot);
+    //dotw = lv_obj_get_width(satData[idx].dot);
+    //doth = lv_obj_get_height(satData[idx].dot);
+    dotw = doth = 11;
     uint32_t skyw, skyh;
     skyw = lv_obj_get_width(skyView);
     skyh = lv_obj_get_height(skyView);
+    skyh = skyw = 161;
     double rad = skyw / 2 - dotw;
+    double tmp = rad;
     rad *= cos(DegToRad(declination));
     int32_t x = sin(DegToRad(azimuth)) * rad;
     int32_t y = cos(DegToRad(azimuth)) * rad;
     int32_t xorig = skyw / 2 - dotw / 2;
     int32_t yorig = skyh / 2 - doth / 2;
-    lv_obj_set_pos(satData[idx].dot, xorig + x, yorig - y);
+    int32_t newx = xorig + x;
+    int32_t newy = yorig - y;
+
+    // Check range is within the sky
+    if (newx < 0 || newy < 0 || newx > skyw || newy > skyh) {
+        Serial.printf("Out of bounds IDX %d newx %d newy %d x %d y %d rad %f dec %f rad %f skyw %d dotw %d\n", idx, newx, newy, x, y, rad, declination, tmp, skyw, dotw);
+    }
+    else {
+        lv_obj_set_pos(satData[idx].dot, newx, newy);
+    }
 }
 
 // Initialise the sky view for the nunber of satellites. Removes any old ones not needed
