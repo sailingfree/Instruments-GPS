@@ -35,7 +35,7 @@ class Txt {
 typedef enum {
     SCR_GPS,
     SCR_SKY,
-    SCR_INFO1,
+    SCR_SYSINFO,
     SCR_MAX
 } Screens;
 
@@ -128,3 +128,4 @@ void updateTime(StringStream t);
 void metersWork(void);
 void setGNSSSky(uint32_t idx, double azimuth, double declination);
 void updateGnss();
+void refreshSysinfo();

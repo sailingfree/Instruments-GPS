@@ -10,6 +10,7 @@
 #include <NMEA0183Messages.h>
 #include <N2kMsg.h>
 #include <map>
+#include <SysInfo.h>
 
 static const uint32_t border = 1, padding = 0;
 
@@ -34,6 +35,9 @@ static SatData satData[MAXSATS];
 lv_obj_t* screens[SCR_MAX];
 static Indicator* ind[SCR_MAX][12];
 static InfoBar* bars[SCR_MAX];
+// define the text areas
+static lv_obj_t* textAreas[SCR_MAX];
+
 
 // Constructor. Binds to the parent object.
 Indicator::Indicator(lv_obj_t* parent, const char* name, uint32_t x, uint32_t y) {
@@ -146,16 +150,20 @@ MenuBar::MenuBar(lv_obj_t* parent, uint32_t y) {
 
 static void buttonHandler(lv_event_t* e) {
     void* target = lv_event_get_user_data(e);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
     Screens s = reinterpret_cast<Screens&>(target);
+#pragma GCC diagnostic pop
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_PRESSED) {
         if (s >= 0 && s < SCR_MAX && screens[s]) {
-            //  refreshData(s);
+            refreshSysinfo();
             lv_scr_load(screens[s]);
         }
     }
 }
+
 
 // Add a button to a menu bar. The callbackl will change the screen to the target
 void MenuBar::addButton(const char* label, Screens target) {
@@ -268,7 +276,7 @@ static void setupMenu(lv_obj_t* screen) {
     MenuBar* menuBar = new MenuBar(screen, BAR_ROW_BOTTOM);
     menuBar->addButton("GPS", SCR_GPS);
     menuBar->addButton("Sky", SCR_SKY);
-    menuBar->addButton("Info", SCR_INFO1);
+    menuBar->addButton("Info", SCR_SYSINFO);
 }
 
 lv_obj_t* createGpsScreen() {
@@ -304,7 +312,6 @@ lv_obj_t* createSkyScreen() {
     lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_GREEN));
     lv_style_set_pad_all(&style, 0);
     lv_obj_t * body = lv_obj_create(screen);
-//    lv_obj_set_style_pad_gap(body, padding, 0);
     lv_obj_set_pos(body, 0, BAR_HEIGHT);
     lv_obj_set_width(body, TFT_WIDTH);
     lv_obj_set_height(body, BODY_HEIGHT);
@@ -350,10 +357,26 @@ lv_obj_t* createSkyScreen() {
     return screen;
 }
 
-lv_obj_t* createInfo1Screen() {
+lv_obj_t* createSysInfoScreen() {
     lv_obj_t* screen = lv_obj_create(NULL);
     setupCommonstyles(screen);
-    setupHeader(SCR_INFO1, screen, "System");
+    setupHeader(SCR_SYSINFO, screen, "System");
+
+   // Create a text area to display the info text
+    textAreas[SCR_SYSINFO] = lv_textarea_create(screen);
+    lv_obj_set_size(textAreas[SCR_SYSINFO], TFT_WIDTH, BODY_HEIGHT);
+    lv_obj_align(textAreas[SCR_SYSINFO], LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_text_font(textAreas[SCR_SYSINFO], &UbuntuMonoB16, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    // Make the scrollbar bigger
+    static lv_style_t style;
+    lv_style_init(&style);
+    lv_style_set_width(&style, 10);      /*Width of the scrollbar*/
+    lv_style_set_pad_right(&style, 5);  /*Space from the parallel side*/
+    lv_style_set_pad_top(&style, 5);    /*Space from the perpendicular side*/
+    lv_style_set_bg_opa(&style, LV_OPA_70);
+    lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_BLUE));
+    lv_obj_add_style(textAreas[SCR_SYSINFO], &style, LV_PART_SCROLLBAR);
 
     setupMenu(screen);
     return screen;
@@ -379,7 +402,7 @@ void setup_display() {
     // Create the screens
     screens[SCR_GPS] = createGpsScreen();
     screens[SCR_SKY] = createSkyScreen();
-    screens[SCR_INFO1] = createInfo1Screen();
+    screens[SCR_SYSINFO] = createSysInfoScreen();
 
     lv_scr_load(screens[SCR_GPS]);
 }
@@ -398,7 +421,7 @@ void display_write(MeterIdx obj, const char* value) {
 void updateTime(StringStream t) {
     bars[SCR_GPS]->setTime(t.data.c_str());
     bars[SCR_SKY]->setTime(t.data.c_str());
-    bars[SCR_INFO1]->setTime(t.data.c_str());
+    bars[SCR_SYSINFO]->setTime(t.data.c_str());
 }
 
 // Update the meters. Called regularly from the main loop/task
@@ -494,4 +517,13 @@ void updateGnss() {
         it++;
         lv_chart_refresh(GNSSChart);
     }
+}
+
+// Refresh the info in the sysinfo page
+void refreshSysinfo() {
+    StringStream s;
+        s.clear();
+        getSysInfo(s);
+        getNetInfo(s);
+        lv_textarea_set_text(textAreas[SCR_SYSINFO], s.data.c_str());
 }
