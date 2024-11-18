@@ -27,9 +27,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <map>
 
-extern std::map<String, String> Gps;
 extern std::map<int, tGSV> Satellites;
-extern std::map<String, String> Sensors;
+extern std::map<String, float> Sensors;
 
 extern String WifiMode, WifiIP, WifiSSID;
 extern String hostName, macAddress;
@@ -37,7 +36,6 @@ extern String Model;
 
 void getNetInfo(Stream& s);
 void getSysInfo(Stream& s);
-void getGps(Stream& s);
 void getSatellites(Stream& s);
 void getSensors(Stream& s);
 int getCpuAvg(int core);

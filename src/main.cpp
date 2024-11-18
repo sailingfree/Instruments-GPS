@@ -1,10 +1,5 @@
-//#include <TinyGPSPlus.h>
-#include <NMEA0183.h>
-#include <NMEA0183Msg.h>
-#include <NMEA0183Handlers.h>
 #include <BoatData.h>
 #include <SoftwareSerial.h>
-#include <TFT_eSPI.h>
 #include <StringStream.h>
 #include <display.h>
 #include <cyd_pins.h>
@@ -17,6 +12,7 @@
 #include <map>
 #include <GwPrefs.h>
 #include <GwShell.h>
+#include <GwTelnet.h>
 #include <ublox_6m_config.h>
 #include <defines.h>
 #include <N2ktoYD.h>
@@ -26,8 +22,8 @@ extern tBoatData BoatData;
 SET_LOOP_TASK_STACK_SIZE(16 * 1024);
 
 // Global objects and variables
-String hostName;
-String Model = "Naiad N2K GPS ";
+String hostName = "Naiad_YD_GPS";
+String Model = "Naiad YD GPS ";
 
 // Map for the wifi access points
 typedef struct {
@@ -54,8 +50,6 @@ const size_t MaxClients = 10;
 // this can get changed later, eg in the gwshell.
 Stream* Console = &Serial;
 
-// Define the network servers
-
 // The telnet server for the shell.
 WiFiServer telnetServer(23);
 
@@ -74,68 +68,56 @@ String WifiIP = "Unknown";
 
 
 #define WLAN_CLIENT 1  // Set to 1 to enable client network. 0 to act as AP only
-#define USE_MDNS true
 
-// The string stream object for building text
-StringStream output;
+// Function to convert lat/lon in decimal degrees to DMM
+// Returns a reference to a static char string
+const char * decimalDegDMM(double angle) {
+    static const int len = 32;
+    static char buf[len];
+    double deg, fractional, mm;
 
-static void printFloat(float val, int len, int prec, StringStream& target) {
-    if (val == NMEA0183DoubleNA) {
-        target.print("---");
-    }
-    else {
-        target.print(val, prec);
-        int vi = abs((int)val);
-        int flen = prec + (val < 0.0 ? 2 : 1);  // . and -
-        flen += vi >= 1000 ? 4 : vi >= 100 ? 3
-            : vi >= 10 ? 2
-            : 1;
-        for (int i = flen; i < len; ++i)
-            target.print(' ');
-    }
-}
-
-static void printInt(unsigned long val, int len, StringStream& target) {
-    StringStream local;
-
-    target.printf("%d", val);
+    fractional = modf(angle, &deg);
+    mm = fabs(fractional * 60.0);
+    snprintf(buf, len - 1, "%.0lf°%.3f\'", deg, mm);
+    return buf;
 }
 
 // Connect to a wifi AP
 // Try all the configured APs
 bool connectWifi() {
-    int wifi_retry = 0;
+    int wifi_retry = 5;
 
     Serial.printf("There are %d APs to try\n", MaxAP);
 
-    for (int i = 0; i < MaxAP; i++) {
-        Serial.printf("\nTrying %s\n", wifiCreds[i].ssid.c_str());
-        WiFi.disconnect();
-        WiFi.mode(WIFI_OFF);
-        WiFi.mode(WIFI_STA);
-        display_write(DISPWifi, String("Trying SSID ") + wifiCreds[i].ssid);
-        WiFi.begin(wifiCreds[i].ssid.c_str(), wifiCreds[i].pass.c_str());
-        wifi_retry = 0;
+    do {
+        for (int i = 0; i < MaxAP; i++) {
+            Serial.printf("\nTrying %s\n", wifiCreds[i].ssid.c_str());
+            WiFi.disconnect();
+            WiFi.mode(WIFI_OFF);
+            WiFi.mode(WIFI_STA);
+            WiFi.begin(wifiCreds[i].ssid.c_str(), wifiCreds[i].pass.c_str());
+            wifi_retry = 0;
 
-        while (WiFi.status() != WL_CONNECTED && wifi_retry < 20) {  // Check connection, try 5 seconds
-            wifi_retry++;
-            delay(500);
-            Console->print(".");
+            while (WiFi.status() != WL_CONNECTED && wifi_retry < 20) {  // Check connection, try 5 seconds
+                wifi_retry++;
+                delay(500);
+                Console->print(".");
+            }
+            Console->println("");
+            if (WiFi.status() == WL_CONNECTED) {
+                WifiMode = "Client";
+                WifiSSID = wifiCreds[i].ssid;
+                WifiIP = WiFi.localIP().toString();
+                SSID = wifiCreds[i].ssid;
+                Console->printf("Connected to %s\n", wifiCreds[i].ssid.c_str());
+                return true;
+            }
+            else {
+                Console->printf("Can't connect to %s\n", wifiCreds[i].ssid.c_str());
+            }
         }
-        Console->println("");
-        if (WiFi.status() == WL_CONNECTED) {
-            WifiMode = "Client";
-            WifiSSID = wifiCreds[i].ssid;
-            WifiIP = WiFi.localIP().toString();
-            SSID = wifiCreds[i].ssid;
-            Console->printf("Connected to %s\n", wifiCreds[i].ssid.c_str());
-            display_write(DISPWifi, String("Connect to ") + wifiCreds[i].ssid);
-            return true;
-        }
-        else {
-            Console->printf("Can't connect to %s\n", wifiCreds[i].ssid.c_str());
-        }
-    }
+    } while (wifi_retry--);
+
     return false;
 }
 
@@ -149,6 +131,13 @@ void disconnectWifi() {
 
 void setup() {
     Serial.begin(115200);
+    delay(1000);
+
+    Serial.printf("Board: %s", BOARD_NAME);
+    Serial.printf("CPU: %s rev%d, CPU Freq: %d Mhz, %d core(s)", ESP.getChipModel(), ESP.getChipRevision(), getCpuFrequencyMhz(), ESP.getChipCores());
+    Serial.printf("Free heap: %d bytes", ESP.getFreeHeap());
+    Serial.printf("Free PSRAM: %d bytes", ESP.getPsramSize());
+    Serial.printf("SDK version: %s", ESP.getSdkVersion());
 
     GwPrefsInit();
 
@@ -161,8 +150,6 @@ void setup() {
 
     // Init the display
     setup_display();
-
-    display_write(DISPWifi, String("Initialising WiFi"));
 
     // setup the WiFI map from the preferences
     wifiCreds[0].ssid = GwGetVal(SSID1);
@@ -209,9 +196,9 @@ void setup() {
 
     // Register host name in mDNS
 
-    if (MDNS.begin(hostName.c_str())) {
+    if (MDNS.begin(hostName)) {
         Console->print("* MDNS responder started. Hostname -> ");
-        Console->println(hostName);
+        Console->printf("Hostname %s\n", hostName.c_str());
     }
 
     // Register the services
@@ -231,37 +218,42 @@ void setup() {
 
 
 void loop() {
-    StringStream Lat, Long, Time, Speed, Course, Dist, MaxSp, AvgSp, Hdop, Sats;
+    StringStream Time;
 
     // read any NMEA0183 messages, decode them and update the BoatData object
     handleNMEA0183();
 
     if (BoatData.changed) {
-        printFloat(BoatData.Latitude, 12, 6, Lat);
-        printFloat(BoatData.Longitude, 12, 6, Long);
-        printFloat(BoatData.SOG, 6, 2, Speed);
-        printFloat(BoatData.COG, 6, 1, Course);
-        printFloat(BoatData.HDOP, 6, 2, Hdop);
-        printInt(BoatData.SatelliteCount, 6, Sats);
-
         time_t gpstime = BoatData.GPSTime + (BoatData.DaysSince1970 * 24 * 60 * 60);
 
         struct tm* tm;
         tm = gmtime(&gpstime);
-        Time.printf("%02d:%02d:%02d %d-%d-%d\n", tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
+        Time.printf("%02d:%02d:%02d %d-%d-%d", tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
 
 
         String space(" ");
-        display_write(DISPWifi, SSID + space + UnitIP.toString());
-        display_write(DISPDateTime, Time.data);
-        display_write(DISPPosition, Lat.data + space + Long.data);
-        display_write(DISPHDOP, String("HDOP ") + Hdop.data);
-        display_write(DISPSats, String("Satellites ") + Sats.data);
-        display_write(DISPSpeed, String("Speed ") + Speed.data + String(" Kts"));
-        display_write(DISPCourse, String("Course ") + Course.data + String(" "));
+        display_write(GNSS_HDOP, BoatData.HDOP, "", 2);
+        const char * strLatitude = decimalDegDMM(BoatData.Latitude);
+        display_write(GNSS_LAT, strLatitude);
+        const char * strLongitude = decimalDegDMM(BoatData.Longitude);
+        display_write(GNSS_LONG, strLongitude);
+        display_write(GNSS_SATS, BoatData.SatelliteCount, "", 0);
+        display_write(GNSS_SOG, BoatData.SOG, "", 1);
+        display_write(GNSS_COG, BoatData.COG, "", 0);    
+        updateGnss();
+        updateTime(Time);
         BoatData.changed = false;
     }
 
+    // Read the sensors
+    handleSensors();
 
+    // handle the telnet session
+    handleTelnet();
+
+    // Run any shell commands
     handleShell();
+
+    // Update the display
+    metersWork();
 }

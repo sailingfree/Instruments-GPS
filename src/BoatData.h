@@ -1,5 +1,5 @@
-#ifndef _BoatData_H_
-#define _BoatData_H_
+#pragma once
+#include <Arduino.h>
 
 struct tBoatData {
     bool changed;                   // Changed since last time we read the data
@@ -26,7 +26,8 @@ struct tBoatData {
         countVTG,
         countGLL,
         countGSA,
-        countGSV;
+        countGSV,
+        countFail;
 
     bool MOBActivated;
 
@@ -50,8 +51,7 @@ public:
             countVTG =
             countGLL =
             countGSA =
-            countGSV = 0;
+            countGSV = 
+            countFail = 0;
     };
 };
-
-#endif // _BoatData_H_

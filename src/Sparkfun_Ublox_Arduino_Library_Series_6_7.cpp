@@ -47,6 +47,8 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 #include "SparkFun_Ublox_Arduino_Library_Series_6_7.h"
 
 SFE_UBLOX_GPS::SFE_UBLOX_GPS(void)
