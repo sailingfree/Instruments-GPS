@@ -22,7 +22,7 @@ TXPin = CYD_SCL_PIN;   // Shared with the i2c so only use one at a time
 
 // Leave this at 9600 for reliability. 
 // The software serial dropped data at higher rates
-static const uint32_t GPSBaud = 9600;   
+static const uint32_t GPSBaud = 9600;
 
 // The NMEA0183 object
 tNMEA0183 NMEA0183_3;
@@ -39,7 +39,9 @@ extern Stream* Console;
 
 // UPD broadcast for Navionics, OpenCPN, etc.
 // We send on this port
-static int YDudpPort = 4445;  // Non standard for local devices only
+static int YDudpPort1 = 4445;  // Non standard for local devices only
+
+static int YDudpPort2 = 0;      // If set then send to this as well.
 
 // Create UDP instance for sending YD messages
 WiFiUDP     YDSendUDP;
@@ -54,12 +56,18 @@ void gpsInit() {
     config_ublox(GPSBaud);
 
     // see if there is an alternate port set
-    String ydvalstr = GwGetVal(GWYDPORT, "4445");
-    int ydval = ydvalstr.toInt();
-    Serial.printf("YD Port %s %d\n", ydvalstr.c_str(), ydval);
-    if (ydval > 1000 && ydval < 65535) {
-        YDudpPort = ydval;
+    String ydvalstr1 = GwGetVal(GWYDPORT1, "4445");
+    String ydvalstr2 = GwGetVal(GWYDPORT2, "0");
+    int ydval1 = ydvalstr1.toInt();
+    int ydval2 = ydvalstr2.toInt();
+    Serial.printf("YD Port 1 %d Port 2 %d\n", ydval1, ydval2);
+    if (ydval1 > 1000 && ydval1 < 65535) {
+        YDudpPort1 = ydval1;
     }
+    if (ydval2 > 1000 && ydval2 < 65535) {
+        YDudpPort2 = ydval2;
+    }
+
 
     ss.begin(GPSBaud);
 
@@ -128,9 +136,15 @@ void N2kToYD_Can(const tN2kMsg& msg, char* MsgBuf) {
 void GwSendYD(const tN2kMsg& N2kMsg) {
     IPAddress udpAddress = WiFi.broadcastIP();
     N2kToYD_Can(N2kMsg, YD_msg);             // Create YD message from PGN
-    YDSendUDP.beginPacket(udpAddress, YDudpPort);  // Send to UDP
+    YDSendUDP.beginPacket(udpAddress, YDudpPort1);  // Send to UDP
     YDSendUDP.printf("%s\r\n", YD_msg);
     YDSendUDP.endPacket();
+
+    if (YDudpPort2) {
+        YDSendUDP.beginPacket(udpAddress, YDudpPort2);  // Send to UDP
+        YDSendUDP.printf("%s\r\n", YD_msg);
+        YDSendUDP.endPacket();
+    }
 
     char buf[MAX_NMEA2000_MESSAGE_SEASMART_SIZE];
     if (N2kToSeasmart(N2kMsg, millis(), buf, MAX_NMEA2000_MESSAGE_SEASMART_SIZE) == 0) return;

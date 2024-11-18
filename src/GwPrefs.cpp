@@ -43,7 +43,8 @@ void GwPrefsInit() {
         Reg.push_back(SSPW2);
         Reg.push_back(GWSSID);
         Reg.push_back(GWPASS);
-        Reg.push_back(GWYDPORT);
+        Reg.push_back(GWYDPORT1);
+        Reg.push_back(GWYDPORT2);
         doneInit = true;
     }
 }

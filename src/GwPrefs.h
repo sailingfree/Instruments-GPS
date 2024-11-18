@@ -47,4 +47,5 @@ void GwPrint(Stream &s);
 #define GWSSID "gwssid"
 #define GWPASS "gwpass"
 
-#define GWYDPORT "ydport"
+#define GWYDPORT1 "ydport1"
+#define GWYDPORT2 "ydport2"
