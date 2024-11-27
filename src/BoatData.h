@@ -55,3 +55,5 @@ public:
             countFail = 0;
     };
 };
+
+extern tBoatData BoatData;

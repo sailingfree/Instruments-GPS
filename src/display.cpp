@@ -11,6 +11,8 @@
 #include <N2kMsg.h>
 #include <map>
 #include <SysInfo.h>
+#include <BoatData.h>
+#include <main.h>
 
 static const uint32_t border = 1, padding = 0;
 
@@ -37,6 +39,19 @@ static Indicator* ind[SCR_MAX][12];
 static InfoBar* bars[SCR_MAX];
 // define the text areas
 static lv_obj_t* textAreas[SCR_MAX];
+
+// Function to convert lat/lon in decimal degrees to DMM
+// Returns a reference to a static char string
+const char* decimalDegDMM(double angle) {
+    static const int len = 32;
+    static char buf[len];
+    double deg, fractional, mm;
+
+    fractional = modf(angle, &deg);
+    mm = fabs(fractional * 60.0);
+    snprintf(buf, len - 1, "%.0lf°%.3f\'", deg, mm);
+    return buf;
+}
 
 
 // Constructor. Binds to the parent object.
@@ -311,7 +326,7 @@ lv_obj_t* createSkyScreen() {
     lv_style_set_bg_opa(&style, LV_OPA_100);
     lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_GREEN));
     lv_style_set_pad_all(&style, 0);
-    lv_obj_t * body = lv_obj_create(screen);
+    lv_obj_t* body = lv_obj_create(screen);
     lv_obj_set_pos(body, 0, BAR_HEIGHT);
     lv_obj_set_width(body, TFT_WIDTH);
     lv_obj_set_height(body, BODY_HEIGHT);
@@ -319,8 +334,8 @@ lv_obj_t* createSkyScreen() {
     lv_obj_add_style(body, &style, 0);
 
     // Grid for the chart and sky
-    static int32_t cols[] = {TFT_WIDTH / 2, TFT_WIDTH / 2, LV_GRID_TEMPLATE_LAST};
-    static int32_t rows[] = {BODY_HEIGHT, BODY_HEIGHT, LV_GRID_TEMPLATE_LAST};
+    static int32_t cols[] = { TFT_WIDTH / 2, TFT_WIDTH / 2, LV_GRID_TEMPLATE_LAST };
+    static int32_t rows[] = { BODY_HEIGHT, BODY_HEIGHT, LV_GRID_TEMPLATE_LAST };
 
     lv_obj_set_style_grid_column_dsc_array(body, cols, 0);
     lv_obj_set_style_grid_row_dsc_array(body, rows, 0);
@@ -336,7 +351,7 @@ lv_obj_t* createSkyScreen() {
     lv_obj_set_width(skyView, TFT_WIDTH / 2);
     lv_obj_set_height(skyView, BODY_HEIGHT);
 
- 
+
     // Chart for the signal strength
     GNSSChart = lv_chart_create(body);
     lv_obj_set_style_pad_gap(GNSSChart, padding, 0);
@@ -362,7 +377,7 @@ lv_obj_t* createSysInfoScreen() {
     setupCommonstyles(screen);
     setupHeader(SCR_SYSINFO, screen, "System");
 
-   // Create a text area to display the info text
+    // Create a text area to display the info text
     textAreas[SCR_SYSINFO] = lv_textarea_create(screen);
     lv_obj_set_size(textAreas[SCR_SYSINFO], TFT_WIDTH, BODY_HEIGHT);
     lv_obj_align(textAreas[SCR_SYSINFO], LV_ALIGN_CENTER, 0, 0);
@@ -382,6 +397,41 @@ lv_obj_t* createSysInfoScreen() {
     return screen;
 }
 
+// Update the meters. Called regularly from the main loop/task
+void metersWork(void* parameters) {
+    static const uint32_t tick_delay = 50;
+    StringStream Time;
+
+    while (1) {
+        if (BoatData.changed) {
+            time_t gpstime = BoatData.GPSTime + (BoatData.DaysSince1970 * 24 * 60 * 60);
+
+            struct tm* tm;
+            tm = gmtime(&gpstime);
+            Time.clear();
+            Time.printf("%02d:%02d:%02d %d-%d-%d", tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
+
+            String space(" ");
+            display_write(GNSS_HDOP, BoatData.HDOP, "", 2);
+            const char* strLatitude = decimalDegDMM(BoatData.Latitude);
+            display_write(GNSS_LAT, strLatitude);
+            const char* strLongitude = decimalDegDMM(BoatData.Longitude);
+            display_write(GNSS_LONG, strLongitude);
+            display_write(GNSS_SATS, BoatData.SatelliteCount, "", 0);
+            display_write(GNSS_SOG, BoatData.SOG, "", 1);
+            display_write(GNSS_COG, BoatData.COG, "", 0);
+            updateGnss();
+            updateTime(Time);
+            BoatData.changed = false;
+        }
+
+        lv_task_handler(); /* let the GUI do its work */
+        lv_tick_inc(tick_delay);
+        vTaskDelay(tick_delay / portTICK_PERIOD_MS);
+    }
+}
+
+
 void setup_display() {
     smartdisplay_init();
     smartdisplay_lcd_set_backlight(1.0f);
@@ -399,12 +449,21 @@ void setup_display() {
     if (theme) {
         lv_disp_set_theme(dispp, theme);
     }
-    // Create the screens
+    // Create the screens   
     screens[SCR_GPS] = createGpsScreen();
     screens[SCR_SKY] = createSkyScreen();
     screens[SCR_SYSINFO] = createSysInfoScreen();
 
     lv_scr_load(screens[SCR_GPS]);
+
+    // Create a thread to update the screen independent of the main loop
+    // and lower priority than the nmea reading loop
+    xTaskCreate(metersWork,
+        "display",
+        8000,
+        NULL,
+        PRIO_DISPLAY_TASK,
+        NULL);
 }
 
 // Update a value using double and optional units
@@ -424,12 +483,6 @@ void updateTime(StringStream t) {
     bars[SCR_SYSINFO]->setTime(t.data.c_str());
 }
 
-// Update the meters. Called regularly from the main loop/task
-void metersWork(void) {
-    static const uint32_t tick_delay = 1000;
-    lv_task_handler(); /* let the GUI do its work */
-    lv_tick_inc(tick_delay);
-}
 
 // set a value in the GNSSChart
 // The value should be mapped to be between the max and min range
@@ -521,8 +574,8 @@ void updateGnss() {
 // Refresh the info in the sysinfo page
 void refreshSysinfo() {
     StringStream s;
-        s.clear();
-        getSysInfo(s);
-        getNetInfo(s);
-        lv_textarea_set_text(textAreas[SCR_SYSINFO], s.data.c_str());
+    s.clear();
+    getSysInfo(s);
+    getNetInfo(s);
+    lv_textarea_set_text(textAreas[SCR_SYSINFO], s.data.c_str());
 }

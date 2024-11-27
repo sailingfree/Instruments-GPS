@@ -16,6 +16,7 @@
 #include <ublox_6m_config.h>
 #include <defines.h>
 #include <N2ktoYD.h>
+#include <main.h>
 
 extern tBoatData BoatData;
 
@@ -69,18 +70,6 @@ String WifiIP = "Unknown";
 
 #define WLAN_CLIENT 1  // Set to 1 to enable client network. 0 to act as AP only
 
-// Function to convert lat/lon in decimal degrees to DMM
-// Returns a reference to a static char string
-const char * decimalDegDMM(double angle) {
-    static const int len = 32;
-    static char buf[len];
-    double deg, fractional, mm;
-
-    fractional = modf(angle, &deg);
-    mm = fabs(fractional * 60.0);
-    snprintf(buf, len - 1, "%.0lf°%.3f\'", deg, mm);
-    return buf;
-}
 
 // Connect to a wifi AP
 // Try all the configured APs
@@ -148,7 +137,7 @@ void setup() {
     // scan the bus
     scan_i2c_bus();
 
-    // Init the display
+    // Init the display task
     setup_display();
 
     // setup the WiFI map from the preferences
@@ -213,39 +202,18 @@ void setup() {
     // The bmp180 pressure sensor
     setup_bmp180();
 
+    // Initialise the gps thread
     gpsInit();
+
+    // set the main task priority lower than the nmea and display threads
+    vTaskPrioritySet(NULL, PRIO_MAIN_TASK);
 }
 
-
+// main loop called periodically
+// The nmea reading/processing and display handlers are 
+// separate freertos tasks
 void loop() {
-    StringStream Time;
-
-    // read any NMEA0183 messages, decode them and update the BoatData object
-    handleNMEA0183();
-
-    if (BoatData.changed) {
-        time_t gpstime = BoatData.GPSTime + (BoatData.DaysSince1970 * 24 * 60 * 60);
-
-        struct tm* tm;
-        tm = gmtime(&gpstime);
-        Time.printf("%02d:%02d:%02d %d-%d-%d", tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
-
-
-        String space(" ");
-        display_write(GNSS_HDOP, BoatData.HDOP, "", 2);
-        const char * strLatitude = decimalDegDMM(BoatData.Latitude);
-        display_write(GNSS_LAT, strLatitude);
-        const char * strLongitude = decimalDegDMM(BoatData.Longitude);
-        display_write(GNSS_LONG, strLongitude);
-        display_write(GNSS_SATS, BoatData.SatelliteCount, "", 0);
-        display_write(GNSS_SOG, BoatData.SOG, "", 1);
-        display_write(GNSS_COG, BoatData.COG, "", 0);    
-        updateGnss();
-        updateTime(Time);
-        BoatData.changed = false;
-    }
-
-    // Read the sensors
+     // Read the sensors
     handleSensors();
 
     // handle the telnet session
@@ -253,7 +221,4 @@ void loop() {
 
     // Run any shell commands
     handleShell();
-
-    // Update the display
-    metersWork();
 }

@@ -15,6 +15,7 @@
 #include <cyd_pins.h>
 #include <SoftwareSerial.h>
 #include <GwPrefs.h>
+#include <main.h>
 
 // Define the pis used for the software serial device on the cheap yellow display
 static const int RXPin = SERIAL_RX,
@@ -50,8 +51,11 @@ WiFiUDP     YDSendUDP;
 #define Max_YD_Message_Size 500
 static char YD_msg[Max_YD_Message_Size] = "";
 
-void gpsInit() {
+// The main nmea0138 freertos task
+// Initialises the gps and then readns and processes the sentences.
+void handleNMEA0183(void* parameter) {
 
+    // Config the ublox 
     config_ublox(GPSBaud);
 
     // see if there is an alternate port set
@@ -67,24 +71,35 @@ void gpsInit() {
         YDudpPort2 = ydval2;
     }
 
-
-    ss.begin(GPSBaud);
-
     // Setup NMEA0183 ports and handlers
     InitNMEA0183Handlers(&BoatData);
     NMEA0183_3.SetMsgHandler(HandleNMEA0183Msg);
 
     NMEA0183_3.SetMessageStream(&ss);
     NMEA0183_3.Open();
+    ss.begin(GPSBaud);
 
+    while (1) {
+        // Read and parse any GPS messages converting them to n2k messages
+        NMEA0183_3.ParseMessages();
+
+        // Make sure the n2k messages get sent as YD messages at regular intervals.
+        processYD();
+
+        // Allow other threads to run
+        vTaskDelay(10 / portTICK_PERIOD_MS);  
+    }
 }
 
-void handleNMEA0183() {
-    // receive and parse any GPS messages converting them to n2k messages
-    NMEA0183_3.ParseMessages();
-
-    // Make sure the n2k messages get sent as YD messages at regular intervals.
-    processYD();
+// Initilaise the nmea thread
+void gpsInit() {
+    Serial.printf("Going to start task\n");
+    xTaskCreate(handleNMEA0183,
+        "handleNMEA0183",
+        8000,
+        NULL,
+        PRIO_NMEA_TASK,
+        NULL);
 }
 
 
