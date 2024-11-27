@@ -13,8 +13,8 @@ Author: Timo Lappalainen
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
  
-#ifndef _NMEA0183Handlers_H_
-#define _NMEA0183Handlers_H_
+#pragma once
+
 #include <Arduino.h>
 #include <Time.h>
 #include <NMEA0183.h>
@@ -23,9 +23,34 @@ Author: Timo Lappalainen
 #include "BoatData.h"
 #include <N2ktoYD.h>
 
+// Struct that describes the messages we are interested in, when they have been 
+// received and their status
+// This is used to make sure N2k messages are sent regularly
+struct N2kMessages {
+    tN2kMsg msg;
+    time_t  lastseen;
+    bool valid;
+};
+
+typedef enum {
+    M_RMC,
+    M_GGA,
+    M_VTG,
+    M_GLL,
+    M_GSA,
+    M_GSV,
+    M_MAX
+} MSGTypes;
+
+// If we havn't seen the GPS messages in this time 
+// mark them as invalid and don't send
+// this is milliseconds
+#define VALID_GPS_PERIOD  15000
+
+// period at which to send GPS related YD messages in milliseconds
+#define SEND_YD_PERIOD    500
+
 void InitNMEA0183Handlers(tBoatData *_BoatData);
 void DebugNMEA0183Handlers(Stream* _stream);
-
 void HandleNMEA0183Msg(const tNMEA0183Msg &NMEA0183Msg);
-
-#endif
+void processYD();

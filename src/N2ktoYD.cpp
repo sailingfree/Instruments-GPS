@@ -52,7 +52,6 @@ static char YD_msg[Max_YD_Message_Size] = "";
 
 void gpsInit() {
 
-
     config_ublox(GPSBaud);
 
     // see if there is an alternate port set
@@ -81,7 +80,11 @@ void gpsInit() {
 }
 
 void handleNMEA0183() {
+    // receive and parse any GPS messages converting them to n2k messages
     NMEA0183_3.ParseMessages();
+
+    // Make sure the n2k messages get sent as YD messages at regular intervals.
+    processYD();
 }
 
 

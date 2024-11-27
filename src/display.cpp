@@ -426,10 +426,9 @@ void updateTime(StringStream t) {
 
 // Update the meters. Called regularly from the main loop/task
 void metersWork(void) {
-    static const uint32_t tick_delay = 50;
+    static const uint32_t tick_delay = 1000;
     lv_task_handler(); /* let the GUI do its work */
     lv_tick_inc(tick_delay);
-    delay(tick_delay);
 }
 
 // set a value in the GNSSChart

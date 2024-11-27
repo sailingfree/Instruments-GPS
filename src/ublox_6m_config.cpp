@@ -42,7 +42,7 @@ void config_ublox(uint16_t GPSBaud)
     Serial.println("GNSS: trying 9600 baud");
     mySerial.begin(9600);
     if (myGPS.begin(mySerial) == true) {
-        Serial.println("GNSS: connected at 9600 baud, switching to 38400");
+        Serial.println("GNSS: connected at 9600 baud");
         myGPS.setSerialRate(GPSBaud);
         delay(100);
     } else {
