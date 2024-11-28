@@ -278,8 +278,6 @@ void processYD() {
                 }
                 else {
                     GwSendYD(n2kMessages[i].msg);
-//                    Serial.printf("Sending messg %d at %ld last seen %ld age %ld\n",
-//                        i, nowMills, n2kMessages[i].lastseen, nowMills - n2kMessages[i].lastseen);
                 }
             }
         }
