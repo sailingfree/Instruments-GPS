@@ -19,9 +19,11 @@ Author: Timo Lappalainen
 #include <Time.h>
 #include <NMEA0183.h>
 #include <NMEA0183Msg.h>
+#include <NMEA0183Messages.h>
 #include <NMEA2000.h>
 #include "BoatData.h"
 #include <N2ktoYD.h>
+#include <map>
 
 // Struct that describes the messages we are interested in, when they have been 
 // received and their status
@@ -49,6 +51,12 @@ typedef enum {
 
 // period at which to send GPS related YD messages in milliseconds
 #define SEND_YD_PERIOD    500
+
+// Map for the satellite informations
+extern std::map<int, tGSV> Satellites;
+
+// Valid satellite map information
+extern bool validGSV;
 
 void InitNMEA0183Handlers(tBoatData *_BoatData);
 void DebugNMEA0183Handlers(Stream* _stream);

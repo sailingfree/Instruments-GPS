@@ -8,6 +8,7 @@
 #include <StringStream.h>
 #include <N2kMessages.h>
 #include <NMEA0183Messages.h>
+#include <NMEA0183Handlers.h>
 #include <N2kMsg.h>
 #include <map>
 #include <SysInfo.h>
@@ -549,10 +550,12 @@ void initGNSSSignal(uint32_t svs) {
     lv_chart_set_all_value(GNSSChart, GNSSChartSeries, 0);
 }
 
-// Map for the satellite informations
-extern std::map<int, tGSV> Satellites;
 
 void updateGnss() {
+    if(!validGSV) {
+        return;   // No full set ready yet
+    }
+    
     std::map<int, tGSV>::iterator it = Satellites.begin();
     uint32_t idx = 0;  // Index into sky view
     initGNSSSky(0);
