@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 #include <N2kMsg.h>
-#include <Seasmart.h>
 #include <WiFi.h>
 #include <NMEA0183.h>
 #include <NMEA0183Msg.h>
@@ -33,8 +32,6 @@ tBoatData BoatData;
 
 // The serial connection to the GPS device
 SoftwareSerial ss(RXPin, TXPin);
-
-#define MAX_NMEA2000_MESSAGE_SEASMART_SIZE 500
 
 extern Stream* Console;
 
@@ -141,6 +138,9 @@ void N2kToYD_Can(const tN2kMsg& msg, char* MsgBuf) {
     rawtime = (DaysSince1970 * 3600 * 24) + SecondsSinceMidnight;  // Create time from GNSS time;
     ts = *localtime(&rawtime);
     strftime(time_str, sizeof(time_str), "%T.000", &ts);  // Create time string
+
+// Ignore truncation warning as snprintf limis the number of bytes written
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 
     snprintf(MsgBuf, 25, "%s R %08x", time_str, canId);  // Set time and canID
 
