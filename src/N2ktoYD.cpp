@@ -163,8 +163,5 @@ void GwSendYD(const tN2kMsg& N2kMsg) {
         YDSendUDP.printf("%s\r\n", YD_msg);
         YDSendUDP.endPacket();
     }
-
-    char buf[MAX_NMEA2000_MESSAGE_SEASMART_SIZE];
-    if (N2kToSeasmart(N2kMsg, millis(), buf, MAX_NMEA2000_MESSAGE_SEASMART_SIZE) == 0) return;
 }
 
