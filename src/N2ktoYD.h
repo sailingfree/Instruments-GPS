@@ -18,3 +18,6 @@ void GwSendYD(const tN2kMsg &N2kMsg);
 void handleIncomingYD(void);
 
 void sendYD(TinyGPSPlus & gps);
+
+// send N2K messages for config and info
+void handlesendN2K();

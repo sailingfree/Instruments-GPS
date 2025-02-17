@@ -221,4 +221,7 @@ void loop() {
 
     // Run any shell commands
     handleShell();
+
+    // And send any N2K messages needed
+    handlesendN2K();
 }
