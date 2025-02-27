@@ -17,6 +17,7 @@
 #include <defines.h>
 #include <N2ktoYD.h>
 #include <main.h>
+#include <10dof.h>
 
 extern tBoatData BoatData;
 
@@ -137,6 +138,9 @@ void setup() {
     // scan the bus
     scan_i2c_bus();
 
+    // Init the compass and accelerometers
+    setup_10dof();
+    
     // Init the display task
     setup_display();
 
@@ -207,6 +211,7 @@ void setup() {
 
     // set the main task priority lower than the nmea and display threads
     vTaskPrioritySet(NULL, PRIO_MAIN_TASK);
+//    calibrate();
 }
 
 // main loop called periodically
@@ -215,6 +220,11 @@ void setup() {
 void loop() {
      // Read the sensors
     handleSensors();
+
+    // Get the tilt comnpensated compass heading
+    StringStream out;
+    printCompass(out);
+    Console->printf("%s", out.data.c_str());
 
     // handle the telnet session
     handleTelnet();
