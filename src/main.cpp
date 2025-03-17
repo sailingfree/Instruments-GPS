@@ -17,7 +17,6 @@
 #include <defines.h>
 #include <N2ktoYD.h>
 #include <main.h>
-#include <Balboa_compass2.h>
 
 extern tBoatData BoatData;
 
@@ -137,9 +136,6 @@ void setup() {
 
     // scan the bus
     scan_i2c_bus();
-
-    // Init the compass and accelerometers
-    setupCompass();
     
     // Init the display task
     setup_display();
@@ -220,10 +216,6 @@ void setup() {
 void loop() {
      // Read the sensors
 //    handleSensors();
-
-    // Get the tilt comnpensated compass heading
- //   StringStream out;
-    printHeading();
 
     // handle the telnet session
     handleTelnet();

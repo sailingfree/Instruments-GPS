@@ -32,6 +32,8 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 #include <cyd_i2c.h>
 #include <cyd_pins.h>
 #include <SingleEMAFilterLib.h>
+#include <N2kMessages.h>
+#include <N2ktoYD.h>
 
 // Uncomment the following line to use a MinIMU-9 v5 or AltIMU-10 v5. Leave commented for older IMUs (up through v4).
 #define IMU_V5
@@ -54,7 +56,7 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 // Positive yaw : counterclockwise
 // int SENSOR_SIGN[9] = {1,-1,-1, -1,1,1, 1,-1,-1}; //Correct directions x,y,z - gyro, accelerometer, magnetometer
 
-// Adjsuted for vertical mounting Y up
+// Adjusted for vertical mounting Y up
 int SENSOR_SIGN[9] = {1, -1, -1, -1, 1, 1, 1, 1, 1};  // Correct directions x,y,z - gyro, accelerometer, magnetometer
 
 // tested with Arduino Uno with ATmega328 and Arduino Duemilanove with ATMega168
@@ -63,7 +65,7 @@ int SENSOR_SIGN[9] = {1, -1, -1, -1, 1, 1, 1, 1, 1};  // Correct directions x,y,
 // Exponential moving average filter.
 // https://www.luisllamas.es/en/arduino-exponential-low-pass/
 // Alpha of 0.2 works niceley with the compass
-SingleEMAFilter<float> headingEMAFilter(0.15);
+SingleEMAFilter<double> headingEMAFilter(0.15);
 SingleEMAFilter<float> rollEMAFilter(0.15);
 SingleEMAFilter<float> pitchEMAFilter(0.15);
 
@@ -815,15 +817,32 @@ void printHeading() {
         {
             last = now;
             counter = 0;
+            double hdg = 0.0;   // Filtered heading in radians
+
             Read_Compass();     // Read I2C magnetometer
             Compass_Heading();  // Calculate magnetic heading
-            float deg = ToDeg(MAG_Heading);
+            double deg = ToDeg(MAG_Heading);
             if (deg < 0.0) {
                 deg += 360;
             }
             headingEMAFilter.AddValue(deg);
-            float filtered = headingEMAFilter.GetLowPass();
-            Serial.printf("T %ld HDG: %f filtered %f Pitch %f Roll %f\n", now, deg, filtered, ToDeg(pitch), ToDeg(roll));
+            double filtered = headingEMAFilter.GetLowPass();
+            hdg = DegToRad(filtered);
+            Serial.printf("T %ld HDG: %f filtered %f Pitch %f Roll %f\n", now, hdg, filtered, ToDeg(pitch), ToDeg(roll));
+
+            // Create and send a N2K messages with heading pitch and roll
+            tN2kMsg msg;
+
+            // Message PGN 127250 "Vessel Heading"
+            SetN2kPGN127250(msg, 1, hdg, 0.0, 0.0, N2khr_magnetic);
+            GwSendYD(msg);
+
+            // And attitude.
+            // Pitch and roll in this canse are reversed due to the sensor poisition
+            // Message PGN 127257 "Attitude
+            SetN2kPGN127257(msg, 1, hdg, roll, pitch);
+            Serial.printf("HDG %f F %f\n", MAG_Heading, filtered);
+            GwSendYD(msg);
         }
 
         // Calculations...
