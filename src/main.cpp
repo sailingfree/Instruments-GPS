@@ -17,6 +17,7 @@
 #include <defines.h>
 #include <N2ktoYD.h>
 #include <main.h>
+#include <MyOta.h>
 
 extern tBoatData BoatData;
 
@@ -205,6 +206,9 @@ void setup() {
     // Initialise the gps thread
     gpsInit();
 
+    // Update over air (OTA)
+    initOTA();
+
     // set the main task priority lower than the nmea and display threads
     vTaskPrioritySet(NULL, PRIO_MAIN_TASK);
     //calibrate();
@@ -225,4 +229,7 @@ void loop() {
 
     // And send any N2K messages needed
     handlesendN2K();
+
+    // Handle any over the air updates
+    handleOta();
 }
