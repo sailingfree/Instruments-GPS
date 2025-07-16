@@ -107,6 +107,69 @@ void HandleNMEA0183Msg(const tNMEA0183Msg& NMEA0183Msg) {
     }
 }
 
+// Return true if the lat and long are reasonable
+// Checks for zeroand then compares lat and lon to last good
+// and makes sure they are close.
+// Close is as follows:
+// Assume we travel at a maximum speed of 25kts (yes yes I know)
+// and we get a GPS message every second
+// we will have travelled about 12 metres
+// From the Garmin site we can see the following:
+// decimal place degrees  Distance
+// 0             1.0      111km
+// 1             0.1      11.1km
+// 2             0.01     1.11km
+// 3             0.001    111m
+// 4             0.0001   11m
+//
+// So if the current and last differ by more than 0.0001 then the reading is suspect.
+//
+bool validLatLong(double lat, double lon) {
+    bool latResult = false;
+    bool lonResult = false;
+    static double lastLat = 0.0;
+    static double lastLon = 0.0;
+    const double delta = 0.0001;
+
+    if(lat != 0.0) {
+        if(lastLat == 0.0) {
+            // set first seen non zero
+            lastLat = lat;
+            latResult = true;
+        } else {
+            // see if reasonable
+            if(fabs(lat - lastLat) <= delta) {
+                latResult = true;
+                lastLat = lat;
+            } else {
+                Serial.printf("Got suspect lat %f, last %f\n", lat, lastLat);
+            }
+        }
+    } else {
+        Serial.printf("Got zero lat\n");
+    }
+    if(lon != 0.0) {
+        if(lastLon == 0.0) {
+            // set first seen non zero
+            lastLon = lat;
+            lonResult = true;
+        } else {
+            // see if reasonable
+            if(fabs(lon - lastLon) <= delta) {
+                lonResult = true;
+                lastLon = lat;
+            } else {
+                Serial.printf("Got suspect lon %f last %f\n", lon, lastLon);
+            }
+        }
+    } else{
+        Serial.printf("Got zero lon\n");
+    }
+
+    return latResult & lonResult;
+}
+
+
 // NMEA0183 message Handler functions
 
 // Position, velocity, and time
@@ -118,7 +181,7 @@ void HandleRMC(const tNMEA0183Msg& NMEA0183Msg) {
         pBD->countRMC++;
 
         // check we have snsible values
-        if (!N2kIsNA(pBD->GPSTime) && !N2kIsNA(pBD->Latitude) && !N2kIsNA(pBD->Longitude) && !N2kIsNA(pBD->COG) && !N2kIsNA(pBD->SOG)) {
+        if (!N2kIsNA(pBD->GPSTime) && !N2kIsNA(pBD->Latitude) && !N2kIsNA(pBD->Longitude) && !N2kIsNA(pBD->COG) && !N2kIsNA(pBD->SOG) && validLatLong(pBD->Latitude, pBD->Longitude)) {
             tN2kMsg msg;
 
             SetN2kCOGSOGRapid(msg, 1, N2khr_true, pBD->COG, pBD->SOG);
