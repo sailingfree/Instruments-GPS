@@ -1,5 +1,5 @@
 #include <BoatData.h>
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include <StringStream.h>
 #include <display.h>
 #include <cyd_pins.h>

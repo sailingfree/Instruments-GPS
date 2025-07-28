@@ -20,11 +20,11 @@ Author: Timo Lappalainen
 #include "NMEA0183Handlers.h"
 #include <N2ktoYD.h>
 #include <map>
+#include <nmeaqueue.h>
 
 // Map for the satellite informations
 std::map<int, tGSV> Satellites;
 bool validGSV = false;  // true indicates we have had all emssages for a set
-
 
 // define the message structs.
 N2kMessages n2kMessages[M_MAX];
@@ -57,6 +57,8 @@ tNMEA0183Handler NMEA0183Handlers[] = {
 
 
 // set a n2k message in the message record and update its status
+// Queue the message for sending by the YD send thread.
+// If the queue is full then drop the message
 void setn2kMessage(MSGTypes type, tN2kMsg & msg) {
     time_t now = millis();
 
@@ -71,6 +73,8 @@ void setn2kMessage(MSGTypes type, tN2kMsg & msg) {
     n2kMessages[type].msg = msg;
     n2kMessages[type].valid = true;
     n2kMessages[type].lastseen = now;
+
+    queueMsg(msg);
 }
 
 
@@ -151,13 +155,13 @@ bool validLatLong(double lat, double lon) {
     if(lon != 0.0) {
         if(lastLon == 0.0) {
             // set first seen non zero
-            lastLon = lat;
+            lastLon = lon;
             lonResult = true;
         } else {
             // see if reasonable
             if(fabs(lon - lastLon) <= delta) {
                 lonResult = true;
-                lastLon = lat;
+                lastLon = lon;
             } else {
                 Serial.printf("Got suspect lon %f last %f\n", lon, lastLon);
             }
@@ -180,7 +184,7 @@ void HandleRMC(const tNMEA0183Msg& NMEA0183Msg) {
         pBD->changed = true;
         pBD->countRMC++;
 
-        // check we have snsible values
+        // check we have sensible values
         if (!N2kIsNA(pBD->GPSTime) && !N2kIsNA(pBD->Latitude) && !N2kIsNA(pBD->Longitude) && !N2kIsNA(pBD->COG) && !N2kIsNA(pBD->SOG) && validLatLong(pBD->Latitude, pBD->Longitude)) {
             tN2kMsg msg;
 
@@ -239,20 +243,26 @@ void HandleVTG(const tNMEA0183Msg& NMEA0183Msg) {
 
     if (pBD == 0) return;
     pBD->countVTG++;
-    return;  // Disabled for now as I'm not sure this gives useful results at least in the lab when stationary
 
     if (NMEA0183ParseVTG_nc(NMEA0183Msg, pBD->COG, MagneticCOG, pBD->SOG)) {
         pBD->Variation = pBD->COG - MagneticCOG;  // Save variation for Magnetic heading
 
         pBD->changed = true;
 
-        // Check for sensible values
-        if(!N2kIsNA(pBD->COG) && !N2kIsNA(pBD->SOG)) {
+        // Check for sensible values and fix them if we can
+        if(N2kIsNA(pBD->COG)) {
+            // Probably no value in the NMEA0183 VTG message from ublox
+            // if we are stationary so assume zero.
+            pBD->COG = 0.0;
+        }
+
+        if(!N2kIsNA(pBD->SOG)) {
             tN2kMsg msg;
 
             SetN2kCOGSOGRapid(msg, 1, N2khr_true, pBD->COG, pBD->SOG);
             setn2kMessage(M_VTG, msg);
         } else {
+            Serial.printf("Failed to set VTG cog %f sog %f\n", pBD->COG, pBD->SOG);
             n2kMessages[M_VTG].valid = false;
         }
     } else {

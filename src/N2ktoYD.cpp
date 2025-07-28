@@ -9,31 +9,27 @@
 #include <NMEA0183Handlers.h>
 #include <NMEA0183Msg.h>
 #include <NMEA2000.h>
-#include <SoftwareSerial.h>
 #include <TinyGPSPlus.h>
 #include <WiFi.h>
 #include <cyd_pins.h>
 #include <main.h>
 #include <ublox_6m_config.h>
+#include <nmeaqueue.h>
 
-// Define the pis used for the software serial device on the cheap yellow
+// Define the pins used for the serial device on the cheap yellow
 // display
 static const int
     RXPin = SERIAL_RX,
     TXPin = CYD_SCL_PIN; // Shared with the i2c so only use one at a time
 
-// Leave this at 9600 for reliability.
-// The software serial dropped data at higher rates
-static const uint32_t GPSBaud = 9600;
+// The rate we set the GPS to for receiving the NMEA sentences
+static const uint32_t GPSBaud = 38400;
 
 // The NMEA0183 object
 tNMEA0183 NMEA0183_3;
 
 // Where we save the incoming data from the GPS receiver
 tBoatData BoatData;
-
-// The serial connection to the GPS device
-SoftwareSerial ss(RXPin, TXPin);
 
 extern Stream *Console;
 
@@ -49,6 +45,10 @@ WiFiUDP YDSendUDP;
 // The buffer to construct YD messages
 #define Max_YD_Message_Size 500
 static char YD_msg[Max_YD_Message_Size] = "";
+
+// Task handles
+TaskHandle_t nmea0183Handle = NULL;
+TaskHandle_t ydHandle = NULL;
 
 // The main nmea0138 freertos task
 // Initialises the gps and then readns and processes the sentences.
@@ -74,28 +74,63 @@ void handleNMEA0183(void *parameter) {
     InitNMEA0183Handlers(&BoatData);
     NMEA0183_3.SetMsgHandler(HandleNMEA0183Msg);
 
-    NMEA0183_3.SetMessageStream(&ss);
-    NMEA0183_3.Open();
-    ss.begin(GPSBaud);
+    // Use the Serial2 device and specify the config and pins
+    Serial2.begin(GPSBaud, SERIAL_8N1, RXPin, TXPin);
 
+    // Attach the serial device to the NMEA library
+    NMEA0183_3.SetMessageStream(&Serial2);
+    NMEA0183_3.Open();
+ 
     while (1) {
         // Read and parse any GPS messages converting them to n2k messages
         NMEA0183_3.ParseMessages();
+
+        // Allow other threads to run
+        vTaskDelay(500);
+    }
+}
+
+// The YD sender task.
+// Reads from the queue and sends the YD UDP packets
+void handleSendYD(void * parm) {
+    while(1) {
+        tN2kMsg msg;
+
+        // Read from the queue. waits until message queued
+        dequeueMsg(msg);
+        GwSendYD(msg);
 
         // Make sure the n2k messages get sent as YD messages at regular
         // intervals.
         processYD();
 
         // Allow other threads to run
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(500);
     }
 }
 
-// Initilaise the nmea thread
+// Initilaise the nmea thread, queue and N2k sender
 void gpsInit() {
     Serial.printf("Going to start task\n");
+
+    setupMsgQueue();
+
     xTaskCreate(handleNMEA0183, "handleNMEA0183", 8000, NULL, PRIO_NMEA_TASK,
-                NULL);
+                & nmea0183Handle);
+
+    xTaskCreate(handleSendYD, "YDSender", 8000, NULL, PRIO_YD_TASK, & ydHandle);
+}
+
+void stopTasks() {
+    vTaskSuspendAll();
+    if(nmea0183Handle) {
+        Serial.printf("Deleting nmea task\n");
+        vTaskSuspend(nmea0183Handle);
+    }
+    if(ydHandle) {
+        Serial.printf("Deleting YD task\n");
+        vTaskSuspend(ydHandle);
+    }
 }
 
 /**
@@ -148,7 +183,7 @@ void N2kToYD_Can(const tN2kMsg &msg, char *MsgBuf) {
     }
 }
 
-// Send to Yacht device clients over udp using the cast address
+// Send a N2K message to Yacht device clients over udp using the broadcast address
 void GwSendYD(const tN2kMsg &N2kMsg) {
     IPAddress udpAddress = WiFi.broadcastIP();
     N2kToYD_Can(N2kMsg, YD_msg);                   // Create YD message from PGN
