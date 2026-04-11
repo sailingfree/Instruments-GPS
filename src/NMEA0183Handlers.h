@@ -16,7 +16,7 @@ Author: Timo Lappalainen
 #pragma once
 
 #include <Arduino.h>
-#include <Time.h>
+#include <time.h>
 #include <NMEA0183.h>
 #include <NMEA0183Msg.h>
 #include <NMEA0183Messages.h>
