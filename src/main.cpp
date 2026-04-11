@@ -7,7 +7,7 @@
 #include <bmp180_cyd.h>
 #include <DNSServer.h>
 #include <WiFi.h>
-#include "ESPmDNS.h"
+//#include "ESPmDNS.h"
 #include <list>
 #include <map>
 #include <GwPrefs.h>
@@ -185,10 +185,10 @@ void setup() {
 
     // Register host name in mDNS
 
-    if (MDNS.begin(hostName)) {
-        Console->print("* MDNS responder started. Hostname -> ");
-        Console->printf("Hostname %s\n", hostName.c_str());
-    }
+//    if (MDNS.begin(hostName)) {
+//        Console->print("* MDNS responder started. Hostname -> ");
+//        Console->printf("Hostname %s\n", hostName.c_str());
+//    }
 
     // Register the services
     // Start the telnet server
