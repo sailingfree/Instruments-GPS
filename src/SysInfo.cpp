@@ -123,18 +123,6 @@ void getSatellites(Stream& s) {
     s.println("================ END ===============");
 }
 
-void getSensors(Stream& s) {
-    std::map<String, float>::iterator it = Sensors.begin();
-
-    s.println("=========== SENSORS ==========");
-
-    while (it != Sensors.end()) {
-        s.printf("%s %f\n", it->first.c_str(), it->second);
-        it++;
-    }
-    s.println("=========== END ==========");
-}
-
 void displayBoat(Stream& s) {
     s.printf("============ BOAT ===========\n");
     s.printf("TrueHeading %f\n", BoatData.TrueHeading);

@@ -183,7 +183,6 @@ void initGwShell() {
     shell.addCommand(F("boat"), boat);
     shell.addCommand(F("sys"), sys);
     shell.addCommand(F("gps"), gps);
-    shell.addCommand(F("sensors"), sensors);
     shell.addCommand(F("net"), net);
     shell.addCommand(F("getval"), getval);
     shell.addCommand(F("setval"), setval);

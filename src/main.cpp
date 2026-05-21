@@ -4,10 +4,8 @@
 #include <display.h>
 #include <cyd_pins.h>
 #include <cyd_i2c.h>
-#include <bmp180_cyd.h>
 #include <DNSServer.h>
 #include <WiFi.h>
-//#include "ESPmDNS.h"
 #include <list>
 #include <map>
 #include <GwPrefs.h>
@@ -130,13 +128,6 @@ void setup() {
 
     GwPrefsInit();
 
-    Wire.setPins(CYD_SDA_PIN, CYD_SCL_PIN);
-    Wire.setClock(100000);
-    Wire.begin();
-
-    // scan the bus
-    scan_i2c_bus();
-
     // Init the display task
     setup_display();
 
@@ -183,13 +174,6 @@ void setup() {
         UnitIP = WiFi.localIP();
     }
 
-    // Register host name in mDNS
-
-//    if (MDNS.begin(hostName)) {
-//        Console->print("* MDNS responder started. Hostname -> ");
-//        Console->printf("Hostname %s\n", hostName.c_str());
-//    }
-
     // Register the services
     // Start the telnet server
     telnetServer.begin();
@@ -197,10 +181,6 @@ void setup() {
     // Init the shell
     initGwShell();
     setShellSource(&Serial);
-
-
-    // The bmp180 pressure sensor
-    setup_bmp180();
 
     // Initialise the gps thread
     gpsInit();
@@ -213,9 +193,6 @@ void setup() {
 // The nmea reading/processing and display handlers are 
 // separate freertos tasks
 void loop() {
-     // Read the sensors
-    handleSensors();
-
     // handle the telnet session
     handleTelnet();
 
