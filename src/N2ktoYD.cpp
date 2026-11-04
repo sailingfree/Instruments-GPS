@@ -16,7 +16,7 @@
 #include <main.h>
 #include <ublox_6m_config.h>
 
-// Define the pis used for the software serial device on the cheap yellow
+// Define the pins used for the software serial device on the cheap yellow
 // display
 static const int
     RXPin = SERIAL_RX,
