@@ -17,39 +17,44 @@
 #include <Arduino.h>
 #include <SparkFun_Ublox_Arduino_Library_Series_6_7.h>
 #include <SoftwareSerial.h>
-#include <cyd_pins.h>
 #include <ublox_6m_config.h>
 
-static const int RXPin = SERIAL_RX,
-                TXPin = CYD_SCL_PIN;   // Shared with the i2c so only use one at a time
+static int rates[] = {4800, 9600, 19200, 38400, 57600, 115200, 230400, 0};
 
-void config_ublox(uint16_t GPSBaud)
+void config_ublox(int GPSBaud, int rxpin, int txpin)
 {
   // The aprkfun ublox object
   SFE_UBLOX_GPS myGPS;
 
   // The serial connection to the GPS device
-  SoftwareSerial mySerial(RXPin, TXPin);
+  SoftwareSerial mySerial(rxpin, txpin);
 
-   //Assume that the U-Blox GNSS is running at 9600 baud (the default)
-  //Loop until we're in sync and then ensure it's at the requested speed baud.
+  int rateIdx= 0;
+  int baud;
+
+  // Assume that the U-Blox GNSS is running at 9600 baud (the default)
+  // Loop until we're in sync and then ensure it's at the requested speed baud.
   do {
-    Serial.printf("GNSS: trying %d baud\n", GPSBaud);
-    mySerial.begin(GPSBaud);
+    baud = rates[rateIdx];
+
+    Serial.printf("GNSS: trying %d baud\n", baud);
+    mySerial.begin(baud);
     if (myGPS.begin(mySerial) == true) break;
 
-    delay(100);
-    Serial.println("GNSS: trying 9600 baud");
-    mySerial.begin(9600);
-    if (myGPS.begin(mySerial) == true) {
-        Serial.println("GNSS: connected at 9600 baud");
-        myGPS.setSerialRate(GPSBaud);
-        delay(100);
-    } else {
-        //myGPS.factoryReset();
-        delay(2000); //Wait a bit before trying again to limit the Serial output
+    // Not connected try next
+    rateIdx++;
+    if(rates[rateIdx] == 0) {
+      rateIdx = 0;
     }
+    delay(100);
   } while(1);
+
+  // Connected now set the desired rate
+  Serial.printf("GNSS: connected at %d baud\n", baud);
+
+  // Connect at requested rate
+  myGPS.setSerialRate(GPSBaud);
+
   Serial.printf("GNSS serial connected at %d baud\n", GPSBaud);
  
   myGPS.setUART1Output(COM_TYPE_NMEA); //Set the UART port to output NMEA only

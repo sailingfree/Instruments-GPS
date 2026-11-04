@@ -16,6 +16,9 @@
 #include <N2ktoYD.h>
 #include <main.h>
 
+// Web server for the configuration page
+#include <MyWebServer.h>
+
 extern tBoatData BoatData;
 
 SET_LOOP_TASK_STACK_SIZE(16 * 1024);
@@ -178,6 +181,9 @@ void setup() {
     // Start the telnet server
     telnetServer.begin();
 
+    // Start the web server
+    webServerSetup();
+
     // Init the shell
     initGwShell();
     setShellSource(&Serial);
@@ -198,6 +204,9 @@ void loop() {
 
     // Run any shell commands
     handleShell();
+
+    // Handle an web server requests
+    webServerWork();
 
     // And send any N2K messages needed
     handlesendN2K();

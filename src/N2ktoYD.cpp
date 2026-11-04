@@ -1,3 +1,4 @@
+// GPS receiver handler
 // send data to a yacht data YD destination
 
 #include <Arduino.h>
@@ -9,7 +10,6 @@
 #include <NMEA0183Handlers.h>
 #include <NMEA0183Msg.h>
 #include <NMEA2000.h>
-#include <SoftwareSerial.h>
 #include <TinyGPSPlus.h>
 #include <WiFi.h>
 #include <cyd_pins.h>
@@ -22,9 +22,8 @@ static const int
     RXPin = SERIAL_RX,
     TXPin = CYD_SCL_PIN; // Shared with the i2c so only use one at a time
 
-// Leave this at 9600 for reliability.
-// The software serial dropped data at higher rates
-static const uint32_t GPSBaud = 9600;
+// GPS serial data rate to use
+static const uint32_t GPSBaud = 19200;
 
 // The NMEA0183 object
 tNMEA0183 NMEA0183_3;
@@ -33,7 +32,7 @@ tNMEA0183 NMEA0183_3;
 tBoatData BoatData;
 
 // The serial connection to the GPS device
-SoftwareSerial ss(RXPin, TXPin);
+HardwareSerial gpsSerial(2);
 
 extern Stream *Console;
 
@@ -55,7 +54,7 @@ static char YD_msg[Max_YD_Message_Size] = "";
 void handleNMEA0183(void *parameter) {
 
     // Config the ublox
-    config_ublox(GPSBaud);
+    config_ublox(GPSBaud, RXPin, TXPin);
 
     // see if there is an alternate port set
     String ydvalstr1 = GwGetVal(GWYDPORT1, "4445");
@@ -74,9 +73,9 @@ void handleNMEA0183(void *parameter) {
     InitNMEA0183Handlers(&BoatData);
     NMEA0183_3.SetMsgHandler(HandleNMEA0183Msg);
 
-    NMEA0183_3.SetMessageStream(&ss);
+    NMEA0183_3.SetMessageStream(&gpsSerial);
     NMEA0183_3.Open();
-    ss.begin(GPSBaud);
+    gpsSerial.begin(GPSBaud, SERIAL_8N1, RXPin, TXPin);
 
     while (1) {
         // Read and parse any GPS messages converting them to n2k messages

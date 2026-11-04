@@ -30,6 +30,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <SysInfo.h>
 #include <GwPrefs.h>
 #include <map>
+#include <taskstats.h>
+
+extern bool debugNMEA;  // global flag to enable/disable printinf message to the console
 
 // Output the ID of the code
 static int showID(int argc = 0, char** argv = NULL) {
@@ -176,6 +179,35 @@ int reboot(int argc, char** argv) {
     return 0;   // I dont think we ever get here
 }
 
+// Get the task stats
+int TaskLog(int argc, char ** argv) {
+    StringStream s;
+    getTaskStats(s);
+    shell.print(s.data);
+    return 0;
+}
+
+// Enable/disable logging all NMEA GPS message to the terminal
+int showGps(int argc, char** argv) {
+    if (argc != 2) {
+        shell.printf("Usage: showgps on|off\n");
+        return(-1);
+    }
+    if (strcmp(argv[1], "on") == 0) {
+        debugNMEA = true;
+        return 0;
+    }
+    else if (strcmp(argv[1], "off") == 0) {
+        debugNMEA = false;
+        return 0;
+    }
+    else {
+        shell.printf("Usage: showgps on|off\n");
+        return(-1);
+    }
+
+}
+
 // Initialise the shell and add the commands
 void initGwShell() {
     Serial.println("Initialisting the shell");
@@ -189,6 +221,8 @@ void initGwShell() {
     shell.addCommand(F("quit"), quit);
     shell.addCommand(F("logger"), logger);
     shell.addCommand(F("reboot"), reboot);
+    shell.addCommand(F("ps \t\tShow task stats"), TaskLog);    
+    shell.addCommand(F("showgps"), showGps);
 }
 
 // Print a prompt to the terminal

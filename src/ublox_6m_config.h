@@ -1,2 +1,2 @@
 #include <Arduino.h>
-void config_ublox(uint16_t GPSBaud);
+void config_ublox(int GPSBaud, int rxpin, int txpin);
