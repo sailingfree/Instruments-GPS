@@ -110,8 +110,8 @@ void getSatellites(Stream& s) {
 
 
     s.printf("SVID\tAZ\tELEV\tSNR\n");
-    std::map<int, tGSV>::iterator it = Satellites.begin();
-    while (it != Satellites.end()) {
+    std::map<int, tGSV>::iterator it = CurrentSatellites.begin();
+    while (it != CurrentSatellites.end()) {
         tGSV sat = it->second;
         if (sat.Azimuth != NMEA0183DoubleNA && sat.Elevation != NMEA0183DoubleNA && sat.SNR != NMEA0183DoubleNA) {
             s.printf("%d\t%g\t%g\t%g\n", sat.SVID, sat.Azimuth, sat.Elevation, sat.SNR);

@@ -50,7 +50,7 @@ WiFiUDP YDSendUDP;
 static char YD_msg[Max_YD_Message_Size] = "";
 
 // The main nmea0138 freertos task
-// Initialises the gps and then readns and processes the sentences.
+// Initialises the gps and then reads and processes the sentences.
 void handleNMEA0183(void *parameter) {
 
     // Config the ublox

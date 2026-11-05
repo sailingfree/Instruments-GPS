@@ -21,9 +21,14 @@ Author: Timo Lappalainen
 #include <N2ktoYD.h>
 #include <map>
 
-// Map for the satellite informations
-std::map<int, tGSV> Satellites;
-bool validGSV = false;  // true indicates we have had all emssages for a set
+// Map for the satellite informations. This is the working map that is 
+//updated as we receive GSV messages. When we have received all the GSV messages 
+// for a set then we can send the N2k message.
+static std::map<int, tGSV> Satellites;
+
+std::map<int, tGSV> CurrentSatellites;  // Map for the satellite informations
+
+bool validGSV = false;  // true indicates we have had all messages for a set
 
 
 // define the message structs.
@@ -223,7 +228,6 @@ void HandleGSV(const tNMEA0183Msg& NMEA0183Msg) {
         msg1, msg2, msg3, msg4)) {
         if (thisMsg == 1) {
             Satellites.clear();  // Start from scratch in case they have changed since last cycle
-            validGSV = false;
         }
 
         pBD->countGSV++;
@@ -243,6 +247,9 @@ void HandleGSV(const tNMEA0183Msg& NMEA0183Msg) {
         //      Serial.printf("GSV total %d this %d sats %d 1.SNR %f 2.SNR %f 3. SNR %f 4.SNR %f\n",
         //        totalMsg, thisMsg, satCount, msg1.SNR, msg2.SNR, msg3.SNR, msg4.SNR);
         if(totalMsg == thisMsg) {
+             // Copy the map for external use so it does not get changed while we are using it
+            CurrentSatellites = Satellites;
+ 
             // Indicate a full set and can be used
             validGSV = true;
         }

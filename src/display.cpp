@@ -556,11 +556,11 @@ void updateGnss() {
         return;   // No full set ready yet
     }
     
-    std::map<int, tGSV>::iterator it = Satellites.begin();
+    std::map<int, tGSV>::iterator it = CurrentSatellites.begin();
     uint32_t idx = 0;  // Index into sky view
     initGNSSSky(0);
     initGNSSSignal(0);
-    while (it != Satellites.end()) {
+    while (it != CurrentSatellites.end()) {
         tGSV sat = it->second;
         if (sat.Azimuth != NMEA0183DoubleNA && sat.Elevation != NMEA0183DoubleNA && sat.SNR != NMEA0183DoubleNA) {
             setGNSSSky(idx, sat.Azimuth, sat.Elevation);

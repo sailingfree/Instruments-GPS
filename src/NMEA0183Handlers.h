@@ -53,7 +53,7 @@ typedef enum {
 #define SEND_YD_PERIOD    500
 
 // Map for the satellite informations
-extern std::map<int, tGSV> Satellites;
+extern std::map<int, tGSV> CurrentSatellites;
 
 // Valid satellite map information
 extern bool validGSV;
