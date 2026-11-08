@@ -1,22 +1,26 @@
 #include <Arduino.h>
 
-String head_html = "<!doctype html>"
+String head_html = 
+"<!Doctype html>"
 "<html lang='en'>"
 "<head>"
-"<link rel='icon' href='data:,'>"
+"<link rel='stylesheet' href='/style.css'>"
+"</head>"
 "<body>";
+
+
 
 String index_html = 
 "<h1>Main</h1>"
 ;
 
 String nav = 
-"<button onclick= \"window.location.href='/';\">Home</button>"
-"<button onclick= \"window.location.href='/system';\">System</button>"
-"<button onclick= \"window.location.href='/boat';\">Boat</button>"
-"<button onclick= \"window.location.href='/GPS';\">GPS</button>"
+"<button onclick=\"window.location.href='/';\">Home</button>"
+"<button onclick=\"window.location.href='/system';\">System</button>"
+"<button onclick=\"window.location.href='/boat';\">Boat</button>"
+"<button onclick=\"window.location.href='/GPS';\">GPS</button>"
 ;
 
-String footer_html = "</body>"
-"</head>"
+String footer_html = 
+"</body>"
 "</html>";

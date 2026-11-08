@@ -101,6 +101,44 @@ void getSysInfo(Stream& s) {
     s.println("=========== END ==========");
 }
 
+// Produce an HTML/CSS chart of the current satellites and their azimuth, elevation and SNR values. 
+//This is used by the web server to display a chart of the current satellites.
+void getSatelliteChart(Stream& s) {
+    s.println("=========== GPS Satellite Chart ===========");
+ 
+    s.printf("<div class='bar-graph-container'>\n");
+    s.printf("<figure class='bar-graph'>\n");
+    s.printf("<figcaption class='bar-graph-title'>GPS Satellites</figcaption>\n");
+    s.printf("<div class='bar-graph-data'>\n");
+    std::map<int, tGSV>::iterator it = CurrentSatellites.begin();
+    while (it != CurrentSatellites.end()) {
+        tGSV sat = it->second;
+
+        // The value is doubled to make the bar graph more visible. 
+        // The SNR value is used as the height of the bar graph. 
+        // The SVID is used as the label for the bar graph. 
+        // The Azimuth and Elevation are not used in the bar graph, 
+        // but could be used to color the bars or add additional information to the chart.
+        if (sat.Azimuth != NMEA0183DoubleNA && sat.Elevation != NMEA0183DoubleNA && sat.SNR != NMEA0183DoubleNA) {
+            s.printf("<div class='bar-graph-bar' style='--value: %g%%;' aria-label='%d: %g;' title=%g></div>\n", 
+                sat.SNR * 2, sat.SVID, sat.SNR, sat.SNR);
+        }
+        it++;
+    }
+    s.printf("</div>\n");
+    s.printf("<div aria-hidden class='bar-graph-legend'>\n");
+    it = CurrentSatellites.begin();
+    while (it != CurrentSatellites.end()) {
+        tGSV sat = it->second;
+        s.printf("<div 'class=bar-graph-key'>%d</div>\n", sat.SVID);
+        it++;
+    }
+    s.printf("</div>\n");   // bar-graph-legend
+    s.printf("</figure>\n");    // bar-graph    
+    s.printf("</div>\n");    // bar-graph-container
+    s.println("================ END ===============");
+}
+
 void getSatellites(Stream& s) {
     uint32_t totalFound = 0;
 

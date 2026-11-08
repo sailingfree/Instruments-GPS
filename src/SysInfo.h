@@ -37,6 +37,7 @@ extern String Model;
 void getNetInfo(Stream& s);
 void getSysInfo(Stream& s);
 void getSatellites(Stream& s);
+void getSatelliteChart(Stream& s);
 void getSensors(Stream& s);
 int getCpuAvg(int core);
 void getN2kMsgs(Stream& s);

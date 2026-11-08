@@ -9,12 +9,13 @@
 #include <taskstats.h>
 
 // HTML strings
-#include <html/style.html>  // Must come before the content files
 #include <html/index.html>
-#include <html/login.html>
 
 // Json library
 #include <ArduinoJson.h>
+
+#include <SPIFFS.h>
+
 
 void displayBoat(Stream & stream);
 
@@ -23,20 +24,35 @@ extern Stream * Console;
 // The web server
 WebServer server(80);
 
+void listSPIFFSFiles(Stream & s) {
+    s.printf("SPIFFS Directory\n");
+    File root = SPIFFS.open("/");
+    File file = root.openNextFile();
+    while (file) {
+        s.printf("%s\t%d bytes\n", file.name(), file.size());
+        file = root.openNextFile(); 
+    }
+}
+
 // Web server
 void webServerSetup(void) {
+    SPIFFS.begin(true);
+
+    listSPIFFSFiles(Serial);
+
     server.begin(80);
     if (WiFi.status() == WL_CONNECTED) {
         Console->println("Web server started");
 
+        server.serveStatic("/favicon.ico", SPIFFS, "/favicon.png");
+        server.serveStatic("/style.css", SPIFFS, "/style.css");
+
         server.on("/", HTTP_GET, []() {
-            server.send(200, "text/html", style +
+            server.send(200, "text/html",
                 head_html +
                 "<h2>GPS Instrument</h2>" +
-                index_html +
                 nav +
                 footer_html);
-            server.sendHeader("Connection", "close");
             });
 
         server.on("/system", HTTP_GET, []() {
@@ -45,7 +61,7 @@ void webServerSetup(void) {
             getSysInfo(sys);
             getTaskStats(psinfo);
             server.sendHeader("Connection", "close");
-            server.send(200, "text/html", style +
+            server.send(200, "text/html",
                 head_html +
                 "<h2>GPS Instrument</h2>" +
                 nav +
@@ -64,7 +80,7 @@ void webServerSetup(void) {
             StringStream boat;
             displayBoat(boat);
             server.sendHeader("Connection", "close");
-            server.send(200, "text/html", style +
+            server.send(200, "text/html",
                 head_html +
                 "<h2>GPS Instrument</h2>" +
                 nav +
@@ -78,9 +94,12 @@ void webServerSetup(void) {
 
             server.on("/GPS", HTTP_GET, []() {
             StringStream gps;   
+            StringStream chart;            
             getSatellites(gps);
+            getSatelliteChart(chart);
+
             server.sendHeader("Connection", "close");
-            server.send(200, "text/html", style +
+            server.send(200, "text/html",
                 head_html +
                 "<h2>GPS Instrument</h2>" +
                 nav +
@@ -88,6 +107,7 @@ void webServerSetup(void) {
                 "<pre>" +
                 gps.data +
                 "</pre>" +
+                chart.data +
                 nav +
                 footer_html);
             });
