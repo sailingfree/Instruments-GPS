@@ -98,14 +98,14 @@ void getSysInfo(Stream& s) {
 
     s.println("=========== SETTINGS ==========");
     GwPrint(s);
+    s.println("=========== SPIFFS ==========");
+    listSPIFFSFiles(s);
     s.println("=========== END ==========");
 }
 
 // Produce an HTML/CSS chart of the current satellites and their azimuth, elevation and SNR values. 
 //This is used by the web server to display a chart of the current satellites.
 void getSatelliteChart(Stream& s) {
-    s.println("=========== GPS Satellite Chart ===========");
- 
     s.printf("<div class='bar-graph-container'>\n");
     s.printf("<figure class='bar-graph'>\n");
     s.printf("<figcaption class='bar-graph-title'>GPS Satellites</figcaption>\n");
@@ -136,7 +136,6 @@ void getSatelliteChart(Stream& s) {
     s.printf("</div>\n");   // bar-graph-legend
     s.printf("</figure>\n");    // bar-graph    
     s.printf("</div>\n");    // bar-graph-container
-    s.println("================ END ===============");
 }
 
 void getSatellites(Stream& s) {

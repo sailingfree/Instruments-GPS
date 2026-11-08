@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 // Init the web server.
 void webServerSetup(void);
 

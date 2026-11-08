@@ -63,9 +63,8 @@ void webServerSetup(void) {
             server.sendHeader("Connection", "close");
             server.send(200, "text/html",
                 head_html +
-                "<h2>GPS Instrument</h2>" +
+                "<h2>System Stats</h2>" +
                 nav +
-                "<h1>System</h1>" +
                 "<pre>" +
                 net.data +
                 sys.data +
@@ -82,9 +81,8 @@ void webServerSetup(void) {
             server.sendHeader("Connection", "close");
             server.send(200, "text/html",
                 head_html +
-                "<h2>GPS Instrument</h2>" +
+                "<h2>GPS Stats</h2>" +
                 nav +
-                "<h1>Boat</h1>" +
                 "<pre>" +
                 boat.data +
                 "</pre>" +
@@ -101,13 +99,12 @@ void webServerSetup(void) {
             server.sendHeader("Connection", "close");
             server.send(200, "text/html",
                 head_html +
-                "<h2>GPS Instrument</h2>" +
+                "<div><h2>GPS Satellite Data</h2></div>" +
                 nav +
-                "<h1>GPS</h1>" +
+                chart.data +                
                 "<pre>" +
                 gps.data +
                 "</pre>" +
-                chart.data +
                 nav +
                 footer_html);
             });
