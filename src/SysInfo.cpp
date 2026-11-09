@@ -138,6 +138,50 @@ void getSatelliteChart(Stream& s) {
     s.printf("</div>\n");    // bar-graph-container
 }
 
+// Create the sky chart of the current satellites. 
+// This is used by the web server to display a chart of 
+// the current satellites position in the sky
+// The chart is a polar plot of the azimuth and elevation of 
+// the satellites.
+// The azimuth is the angle of the satellite from true north,
+// and the elevation is the angle of the satellite above the horizon.   
+// This uses HTML SVG to create the chart.
+void getSkyChart(Stream& s) {
+    static const int width = 400;
+    static const int height = 400;
+    static const int radius = 180;  
+
+    s.printf("<svg width='%d' height='%d' viewBox='0 0 %d %d'>\n", width, height, width, height);
+    s.printf("<circle cx='%d' cy='%d' r='%d' fill='none' stroke='black' stroke-width='2'/>\n", width / 2, height / 2, radius);
+    s.printf("<circle cx='%d' cy='%d' r='%d' fill='none' stroke='black' stroke-width='2'/>\n", width / 2, height / 2, radius * 2 / 3);
+    s.printf("<circle cx='%d' cy='%d' r='%d' fill='none' stroke='black' stroke-width='2'/>\n", width / 2, height / 2, radius / 3);
+    s.printf("<line x1='%d' y1='%d' x2='%d' y2='%d' stroke='black' stroke-width='2'/>\n", width / 2, height / 2 - radius, width / 2, height / 2 + radius);
+    s.printf("<line x1='%d' y1='%d' x2='%d' y2='%d' stroke='black' stroke-width='2'/>\n", width / 2 - radius, height / 2, width / 2 + radius, height / 2);      
+    s.printf("<text x='%d' y='%d' text-anchor='middle' dominant-baseline='middle'>N</text>\n", width / 2, height / 2 - radius - 10);
+    s.printf("<text x='%d' y='%d' text-anchor='middle' dominant-baseline='middle'>S</text>\n", width / 2, height / 2 + radius + 20);
+    s.printf("<text x='%d' y='%d' text-anchor='middle' dominant-baseline='middle'>W</text>\n", width / 2 - radius - 10, height / 2);
+    s.printf("<text x='%d' y='%d' text-anchor='middle' dominant-baseline='middle'>E</text>\n", width / 2 + radius + 10, height / 2);    
+    std::map<int, tGSV>::iterator it = CurrentSatellites.begin();
+    while (it != CurrentSatellites.end()) {
+        tGSV sat = it->second;
+        if (sat.Azimuth != NMEA0183DoubleNA && sat.Elevation != NMEA0183DoubleNA && sat.SNR != NMEA0183DoubleNA) {
+            double azimuthRad = sat.Azimuth * M_PI / 180.0;
+            double elevationRad = sat.Elevation * M_PI / 180.0;
+            double r = radius * (1 - elevationRad / (M_PI / 2));
+            double x = width / 2 + r * sin(azimuthRad);
+            double y = height / 2 - r * cos(azimuthRad);
+            s.printf("<circle cx='%g' cy='%g' r='5' fill='blue'>\n", x, y);
+            s.printf("<title>SVID: %d, Azimuth: %g, Elevation: %g, SNR: %g</title>\n", sat.SVID, sat.Azimuth, sat.Elevation, sat.SNR);
+            s.printf("</circle>\n");
+            s.printf("<text x='%g' y='%g' text-anchor='middle' dominant-baseline='middle' font-size='10'>%d</text>\n", x, y - 10, sat.SVID);
+        }
+        it++;
+    }
+
+
+    s.printf("</svg>\n");
+}
+
 void getSatellites(Stream& s) {
     uint32_t totalFound = 0;
 

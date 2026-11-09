@@ -92,16 +92,19 @@ void webServerSetup(void) {
 
             server.on("/GPS", HTTP_GET, []() {
             StringStream gps;   
-            StringStream chart;            
+            StringStream chart;      
+            StringStream sky;      
             getSatellites(gps);
             getSatelliteChart(chart);
+            getSkyChart(sky);
 
             server.sendHeader("Connection", "close");
             server.send(200, "text/html",
                 head_html +
                 "<div><h2>GPS Satellite Data</h2></div>" +
                 nav +
-                chart.data +                
+                chart.data +       
+                sky.data +         
                 "<pre>" +
                 gps.data +
                 "</pre>" +
