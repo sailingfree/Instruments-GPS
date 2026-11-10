@@ -1,3 +1,4 @@
+#ifdef USE_ASYNC_WEB_SERVER
 #include <Arduino.h>
 
 #include <AsyncTCP.h>
@@ -43,7 +44,6 @@ void onBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t in
   //Handle body
 }
 
-
 // Web server
 void webServerSetup(void) {
     SPIFFS.begin(true);
@@ -57,17 +57,28 @@ void webServerSetup(void) {
 //        server.serveStatic("/style.css", SPIFFS, "/style.css");
 
         // respond to GET requests on URL /heap
-        server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
-            request->send(200, "text/plain", String(ESP.getFreeHeap()));
-        });
-
-        server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-            request->send(200, "text/html",
+        // Static RAM — no heap allocation at all
+        static AsyncCallbackWebHandler handler;
+        handler.setUri(AsyncURIMatcher::exact("/"));
+        handler.onRequest([](AsyncWebServerRequest *request) {
+                        request->send(200, "text/html",
                 head_html +
                 "<h2>GPS Instrument</h2>" +
                 nav +
                 footer_html);
             });
+        server.addHandler(handler);  // non-owning reference overload
+//        server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
+//            request->send(200, "text/plain", String(ESP.getFreeHeap()));
+//        });
+
+//        server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+//            request->send(200, "text/html",
+//                head_html +
+//                "<h2>GPS Instrument</h2>" +
+//                nav +
+//                footer_html);
+//            });
 /*
         server.on("/system", HTTP_GET, []() {
             StringStream net, sys, msgs,psinfo;
@@ -134,3 +145,5 @@ void webServerSetup(void) {
 void webServerWork() {
 
 }
+
+#endif // USE_ASYNC_WEB_SERVER==YES

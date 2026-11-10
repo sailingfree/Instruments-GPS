@@ -1,3 +1,5 @@
+#ifndef USE_ASYNC_WEB_SERVER
+
 #include <Arduino.h>
 
 #include <WiFi.h>
@@ -121,3 +123,5 @@ void webServerWork() {
         server.handleClient();
     }
 }
+
+#endif // USE_ASYNC_WEB_SERVER==NO
