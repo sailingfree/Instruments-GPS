@@ -104,7 +104,7 @@ void webServerSetup(void) {
                 "<div><h2>GPS Satellite Data</h2></div>" +
                 nav +
                 chart.data +       
-                sky.data +         
+ //               sky.data +         
                 "<pre>" +
                 gps.data +
                 "</pre>" +
